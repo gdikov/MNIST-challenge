@@ -1,6 +1,7 @@
 import numpy as np
 
 from models.model import AbstractModel
+from utils.hyper_opt import KFoldCrossValidation
 
 class kNN(AbstractModel):
 
@@ -11,12 +12,11 @@ class kNN(AbstractModel):
         pass
 
 
-    def fit(self, train_data):
+    def fit(self, train_data, **kwargs):
         self.data = train_data
         # reshape the images into row vectors of 28*28 elements
-        num_samples, dim_x, dim_y = self.data['x'].shape
-        self.data['x'] = self.data['x'].reshape(num_samples, dim_x * dim_y)
-        pass
+        num_samples, dim_x, dim_y = self.data['x_train'].shape
+        self.data['x_train'] = self.data['x_train'].reshape(num_samples, dim_x * dim_y)
 
 
     def predict(self, new_data, k=1):
@@ -31,10 +31,8 @@ class kNN(AbstractModel):
         """
 
         # make sure the new_data is shaped like the train data
-        if new_data.shape[1] != self.data['x'].shape[1]:
-            new_data = new_data.reshape(new_data.shape[0], self.data['x'].shape[1])
-
-
+        if new_data.shape[1] != self.data['x_train'].shape[1]:
+            new_data = new_data.reshape(new_data.shape[0], self.data['x_train'].shape[1])
 
         num_test = new_data.shape[0]
 
@@ -45,7 +43,7 @@ class kNN(AbstractModel):
             partial_distance_matrix = self._compute_distance_matrix(chunk)
             for local_id, global_id in enumerate(idx):
                 closest_k = np.argpartition(partial_distance_matrix[local_id], k)[:k]
-                labels = self.data['y'][closest_k]
+                labels = self.data['y_train'][closest_k]
 
                 votes = np.bincount(labels)
                 majority = np.argmax(votes)
@@ -66,8 +64,8 @@ class kNN(AbstractModel):
 
         if dist_mode == 'L2':
             distances_chunk = np.sum(new_data ** 2, axis=1, keepdims=True) \
-                              + np.sum(self.data['x'] ** 2, axis=1) \
-                              - 2 * np.dot(new_data, self.data['x'].T)
+                              + np.sum(self.data['x_train'] ** 2, axis=1) \
+                              - 2 * np.dot(new_data, self.data['x_train'].T)
 
             return distances_chunk
         else:
@@ -79,17 +77,15 @@ if __name__ == "__main__":
     from utils.data_utils import load_MNIST
     data = load_MNIST()
 
-    train_data = {k: data[k + '_train'] for k in ['x', 'y']}
-    val_data = {k: data[k + '_val'] for k in ['x', 'y']}
-    test_data = {k: data[k + '_test'] for k in ['x', 'y']}
-
     model = kNN()
-    model.fit(train_data)
 
+    validator = KFoldCrossValidation(data=data, k=3)
+    best_k = validator.validate(model, xrange(1, 10))
 
+    model.fit(data)
+    predictions = model.predict(data['x_test'], k=best_k)
 
-    predictions = model.predict(test_data['x'], k=best_k)
-    test_acc = np.sum(predictions == test_data['y']) / float(predictions.shape[0]) * 100.
+    test_acc = np.sum(predictions == data['y_test']) / float(predictions.shape[0]) * 100.
     print("Test accuracy for k={1}: {0}"
           .format(test_acc, best_k))
 

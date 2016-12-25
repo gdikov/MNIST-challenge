@@ -3,8 +3,8 @@ class AbstractModel(object):
     def __init__(self, name='model'):
         self.name = name
 
-    def fit(self, train_data):
+    def fit(self, train_data, **kwargs):
         pass
 
-    def predict(self, new_data, mode='val'):
+    def predict(self, new_data):
         return None

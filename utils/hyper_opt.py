@@ -1,13 +1,9 @@
 import numpy as np
+import cPickle
+import os
 
 class CrossValidation(object):
     def __init__(self, data):
-        if isinstance(data, dict):
-            if 'x_val' in data.keys() and 'x_train' in data.keys():
-                data['x'] = np.concatenate((data['x_train'], data['x_val']))
-                del data['x_train'], data['x_val']
-                data['y'] = np.concatenate((data['y_train'], data['y_val']))
-                del data['y_train'], data['y_val']
         self.trainval = data
 
     def validate(self, model, ranges, verbose):
@@ -22,7 +18,6 @@ class KFoldCrossValidation(CrossValidation):
 
     def validate(self, model, ranges, verbose=True):
         print("Performing k-fold cross-validation with k={}".format(self.k))
-        # TODO: refactor this to be a real k-fold cross-validation
         if model.name == 'kNN':
             if isinstance(ranges, xrange):
                 param_range = ranges
@@ -32,7 +27,7 @@ class KFoldCrossValidation(CrossValidation):
             accs = []
             for k in param_range:
                 micro_acc = []
-                for train_data, val_data in self.get_folds():
+                for train_data, val_data in self._get_folds():
                     model.fit(train_data)
                     predictions = model.predict(val_data['x'], k=k)
                     macc = np.sum(predictions == val_data['y']) / float(predictions.shape[0]) * 100.0
@@ -48,7 +43,7 @@ class KFoldCrossValidation(CrossValidation):
             raise NotImplementedError
 
 
-    def get_folds(self):
+    def _get_folds(self):
         data_size = self.trainval['x'].shape[0]
         folds = np.array_split(np.arange(data_size), self.k)
         # if the last split is unbalanced, merge with the one before the last
@@ -59,8 +54,8 @@ class KFoldCrossValidation(CrossValidation):
         for i in xrange(self.k):
             val_idxs = folds[i]
             train_idxs = np.setdiff1d(np.arange(data_size), val_idxs, assume_unique=True)
-            train_data = {k: self.trainval[k][train_idxs] for k in ['x', 'y']}
-            val_data = {k: self.trainval[k][val_idxs] for k in ['x', 'y']}
+            train_data = {k: self.trainval[k + '_train'][train_idxs] for k in ['x', 'y']}
+            val_data = {k: self.trainval[k + '_train'][val_idxs] for k in ['x', 'y']}
             yield train_data, val_data
 
 

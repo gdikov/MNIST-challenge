@@ -35,32 +35,42 @@ def load_MNIST(num_training=50000, num_validation=10000, num_test=10000):
 
     num_train_samples = X_train.shape[0]
     # Split and subsample the data
-    val_mask = np.random.choice(num_train_samples, replace=False, size=num_validation)
-    X_val = X_train[val_mask]
-    y_val = y_train[val_mask]
+    val_mask = np.array([])
+    if num_validation > 0:
+        val_mask = np.random.choice(num_train_samples, replace=False, size=num_validation)
+        X_val = X_train[val_mask]
+        y_val = y_train[val_mask]
     train_mask = np.setdiff1d(np.arange(num_train_samples), val_mask, assume_unique=True)
     X_train = X_train[train_mask][:num_training]
     y_train = y_train[train_mask][:num_training]
     X_test = X_test[:num_test]
     y_test = y_test[:num_test]
 
-    assert X_val.shape[0] + X_train.shape[0] == num_training + num_validation, \
-        "Something went worng while splitting the dataset into train and validation subsets"
+    if num_validation > 0:
+        assert X_val.shape[0] + X_train.shape[0] == num_training + num_validation, \
+            "Something went worng while splitting the dataset into train and validation subsets"
 
     # Normalize the data: subtract the mean image
     mean_image = np.mean(X_train, axis=0)
     X_train -= mean_image
-    X_val -= mean_image
+    if num_validation > 0:
+        X_val -= mean_image
     X_test -= mean_image
 
     print("MNIST dataset is loaded from disk and normalized to {0} mean".format(np.mean(X_train)))
 
     # Package data into a dictionary
-    return {
-        'x_train': X_train, 'y_train': y_train,
-        'x_val': X_val, 'y_val': y_val,
-        'x_test': X_test, 'y_test': y_test,
-    }
+    if num_validation > 0:
+        return {
+            'x_train': X_train, 'y_train': y_train,
+            'x_val': X_val, 'y_val': y_val,
+            'x_test': X_test, 'y_test': y_test,
+        }
+    else:
+        return {
+            'x_train': X_train, 'y_train': y_train,
+            'x_test': X_test, 'y_test': y_test,
+        }
 
 
 def load_MNIST_from_raw(dataset="training", digits=None,

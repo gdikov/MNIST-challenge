@@ -3,6 +3,7 @@ import numpy as np
 
 
 from layer import AbstractLayer
+import models.nn.config as cfg
 
 class Conv(AbstractLayer):
     def __init__(self, incoming, num_filters=32, filter_size=3, conv_params=None):
@@ -13,9 +14,20 @@ class Conv(AbstractLayer):
         self.conv_params = conv_params
         self.init_params()
 
+
+    def output_shape(self):
+        image_height = self.incoming.output_shape()[-2]
+        image_width = self.incoming.output_shape()[-1]
+        h_out = 1 + (image_height + 2 * self.conv_params['pad'] - self.filter_size) \
+                    / self.conv_params['stride']
+        w_out = 1 + (image_width + 2 * self.conv_params['pad'] - self.filter_size) \
+                    / self.conv_params['stride']
+        return (cfg.batch_size, self.num_filters, h_out, w_out)
+
+
     def init_params(self):
-        num_incomig_channel = self.incoming.output_shape()[0]
-        self.params = {'W': 1e-3 * np.random.randn(self.num_filters, num_incomig_channel,
+        num_incoming_channel = self.incoming.output_shape()[1]
+        self.params = {'W': 1e-3 * np.random.randn(self.num_filters, num_incoming_channel,
                                                    self.filter_size, self.filter_size),
                        'b': np.zeros(self.num_filters)}
         self.dparams = {'dW': np.zeros(self.num_filters, self.incoming.num_units),

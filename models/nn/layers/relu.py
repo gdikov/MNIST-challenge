@@ -1,33 +1,56 @@
 import numpy as np
 
-def relu_forward(x):
-    """
-    Computes the forward pass for a layer of rectified linear units (ReLUs).
-
-    Input:
-    - x: Inputs, of any shape
-
-    Returns a tuple of:
-    - out: Output, of the same shape as x
-    - cache: x
-    """
-    out = np.maximum(0, x)
-    cache = x
-    return out, cache
+from layer import AbstractLayer
 
 
-def relu_backward(dout, cache):
-    """
-    Computes the backward pass for a layer of rectified linear units (ReLUs).
+class ReLU(AbstractLayer):
+    def __init__(self, incoming, use_leaky=False):
+        super(ReLU, self).__init__(incoming)
+        self.cache = dict()
+        self.use_leaky = use_leaky
+        self.init_params()
 
-    Input:
-    - dout: Upstream derivatives, of any shape
-    - cache: Input x, of same shape as dout
 
-    Returns:
-    - dx: Gradient with respect to x
-    """
-    dx, x = None, cache
-    dx = dout
-    dx[x <= 0] = 0
-    return dx
+    def init_params(self):
+        self.params = None
+        self.dparams = None
+
+
+    def forward(self, X):
+        """
+        Computes the forward pass for a layer of rectified linear units (ReLUs).
+
+        Input:
+        - x: Inputs, of any shape
+
+        Returns a tuple of:
+        - out: Output, of the same shape as x
+        - cache: x
+        """
+        if not self.use_leaky:
+            out = np.maximum(0, X)
+        else:
+            out = np.maximum(1e-2 * X, X)
+        self.cache['X'] = X
+        return out
+
+
+    def relu_backward(self, upstream_derivatives):
+        """
+        Computes the backward pass for a layer of rectified linear units (ReLUs).
+
+        Input:
+        - dout: Upstream derivatives, of any shape
+        - cache: Input x, of same shape as dout
+
+        Returns:
+        - dx: Gradient with respect to x
+        """
+        x = self.cache['X']
+        dx = upstream_derivatives
+        if not self.use_leaky:
+            dx[x <= 0] = 0
+        else:
+            dx[x <= 0] *= 1e-2
+        self.dparams['X'] = dx
+        return self.dparams

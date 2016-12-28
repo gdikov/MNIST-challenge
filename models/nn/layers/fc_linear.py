@@ -14,7 +14,7 @@ class Linear(AbstractLayer):
 
 
     def output_shape(self):
-        return (self.num_units)
+        return (cfg.batch_size, self.num_units)
 
 
     def init_params(self):

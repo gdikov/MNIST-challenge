@@ -63,14 +63,11 @@ class LogisticRegression(AbstractModel):
 
 
     def predict(self, new_data):
-        if self.add_bias:
-            # make sure the new_data is shaped like the train data
-            if new_data.shape[1] != self.data['x_train'].shape[1]:
-                new_data = new_data.reshape(new_data.shape[0], self.data['x_train'].shape[1] - 1)
+        # make sure the new_data is shaped like the train data
+        if new_data.shape[1] != 28 * 28 + 1 and new_data.shape[1] != 28 * 28:
+            new_data = new_data.reshape(new_data.shape[0], 28*28)
+        if self.add_bias and new_data.shape[1] != 28*28 + 1:
             new_data = np.hstack((new_data, np.ones((new_data.shape[0], 1))))
-        else:
-            if new_data.shape[1] != self.data['x_train'].shape[1]:
-                new_data = new_data.reshape(new_data.shape[0], self.data['x_train'].shape[1])
 
         probs = softmax(self.W, new_data)
         return np.argmax(probs, axis=1)
@@ -80,7 +77,7 @@ if __name__ == "__main__":
     from utils.data_utils import load_MNIST
     data = load_MNIST(num_training=50000, num_validation=10000)
 
-    model = LogisticRegression(batch_size=50000, regularisation=0.00, add_bias=True)
+    model = LogisticRegression(batch_size=50000, regularisation=0.0, add_bias=True)
 
     model.fit(data, num_epochs=300)
 

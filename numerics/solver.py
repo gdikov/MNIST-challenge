@@ -20,7 +20,7 @@ class SGD(Solver):
 
 
     def update(self, x, dx):
-        pass
+        raise NotImplementedError
 
 
 class Adam(Solver):
@@ -28,7 +28,7 @@ class Adam(Solver):
         super(Adam, self).__init__()
         if config is None:
             config = dict()
-            config['learning_rate'] = 0.001
+            config['learning_rate'] = 0.1
             config['beta1'] = 0.9
             config['beta2'] = 0.999
             config['epsilon'] = 1e-8

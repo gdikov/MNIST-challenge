@@ -3,10 +3,10 @@ import numpy as np
 from models.model import AbstractModel
 from utils.hyper_opt import KFoldCrossValidation
 
-class kNN(AbstractModel):
+class kNearestNeighbours(AbstractModel):
 
     def __init__(self, batch_size=10):
-        super(kNN, self).__init__('kNN')
+        super(kNearestNeighbours, self).__init__('kNN')
         self.data = None
         self.num_chunks = batch_size
         pass
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     from utils.data_utils import load_MNIST
     data = load_MNIST()
 
-    model = kNN()
+    model = kNearestNeighbours()
 
     validator = KFoldCrossValidation(data=data, k=3)
     best_k = validator.validate(model, xrange(1, 10))
@@ -89,8 +89,8 @@ if __name__ == "__main__":
     print("Test accuracy for k={1}: {0}"
           .format(test_acc, best_k))
 
-    # miscalssified_idx = predictions != val_data['y']
+    miscalssified_idx = predictions != data['y_test']
 
-    # from utils.vizualiser import plot_digits
+    from utils.vizualiser import plot_digits
 
-    # plot_digits(val_data['x'][miscalssified_idx][:64], predictions[miscalssified_idx][:64], plot_shape=(8, 8))
+    plot_digits(data['x_test'][miscalssified_idx][:64], predictions[miscalssified_idx][:64], plot_shape=(8, 8))

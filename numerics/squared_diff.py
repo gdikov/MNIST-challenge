@@ -1,5 +1,7 @@
 import numpy as np
 
+
+
 def squared_loss(W, x, y, reg=0.1):
     """
     Computes the softmax loss function.
@@ -16,7 +18,7 @@ def squared_loss(W, x, y, reg=0.1):
     loss = 0.5 * np.sum((np.argmax(np.dot(x, W.T)) - y) ** 2) / num_train
     loss += 0.5 * reg * np.sum(W * W)
 
-    dW = np.dot(probabilities.T, x) / num_train
+    dW = np.zeros_like(W)# TODO np.dot(probabilities.T, x) / num_train
     dW += reg * W
 
     return loss, dW

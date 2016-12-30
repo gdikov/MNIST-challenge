@@ -3,7 +3,6 @@ import numpy as np
 from models.model import AbstractModel
 from numerics.solver import Adam
 from numerics.softmax import softmax_loss, softmax
-from utils.label_factory import OneHot
 
 class LogisticRegression(AbstractModel):
 
@@ -44,6 +43,7 @@ class LogisticRegression(AbstractModel):
         for i in xrange(num_epochs):
             losses = []
             for idx in self._batch_idx():
+                # scores = np.dot(self.W, self.data['x_train'][idx])
                 loss, dW = softmax_loss(self.W,
                                         self.data['x_train'][idx],
                                         self.data['y_train'][idx],
@@ -69,7 +69,8 @@ class LogisticRegression(AbstractModel):
         if self.add_bias and new_data.shape[1] != 28*28 + 1:
             new_data = np.hstack((new_data, np.ones((new_data.shape[0], 1))))
 
-        probs = softmax(self.W, new_data)
+        scores = np.dot(new_data, self.W.T)
+        probs = softmax(scores)     # this is unnecessary as the softmax function will not change the order
         return np.argmax(probs, axis=1)
 
 

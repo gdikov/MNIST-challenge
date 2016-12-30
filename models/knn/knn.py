@@ -75,7 +75,7 @@ class kNearestNeighbours(AbstractModel):
 
 if __name__ == "__main__":
     from utils.data_utils import load_MNIST
-    data = load_MNIST()
+    data = load_MNIST(num_training=60000, num_validation=0)
 
     model = kNearestNeighbours()
 

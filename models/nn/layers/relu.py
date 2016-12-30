@@ -11,9 +11,14 @@ class ReLU(AbstractLayer):
         self.init_params()
 
 
+    def output_shape(self):
+        incoming_shape = self.incoming.output_shape()
+        return incoming_shape
+
+
     def init_params(self):
         self.params = None
-        self.dparams = None
+        self.dparams = dict()
 
 
     def forward(self, X):
@@ -35,7 +40,7 @@ class ReLU(AbstractLayer):
         return out
 
 
-    def relu_backward(self, upstream_derivatives):
+    def backward(self, upstream_derivatives):
         """
         Computes the backward pass for a layer of rectified linear units (ReLUs).
 
@@ -53,4 +58,4 @@ class ReLU(AbstractLayer):
         else:
             dx[x <= 0] *= 1e-2
         self.dparams['X'] = dx
-        return self.dparams
+        return self.dparams['X']

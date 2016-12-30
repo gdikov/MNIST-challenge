@@ -1,9 +1,9 @@
-import models.nn.layers.conv_utils as helpers
+import conv_utils as helpers
 import numpy as np
 
 
 from layer import AbstractLayer
-import models.nn.config as cfg
+import config as cfg
 
 class Conv(AbstractLayer):
     def __init__(self, incoming, num_filters=32, filter_size=3, conv_params=None):
@@ -11,7 +11,10 @@ class Conv(AbstractLayer):
         self.num_filters = num_filters
         self.filter_size = filter_size
         self.cache = dict()
-        self.conv_params = conv_params
+        if conv_params is None:
+            self.conv_params = cfg.conv_params
+        else:
+            self.conv_params = conv_params
         self.init_params()
 
 
@@ -30,9 +33,9 @@ class Conv(AbstractLayer):
         self.params = {'W': 1e-3 * np.random.randn(self.num_filters, num_incoming_channel,
                                                    self.filter_size, self.filter_size),
                        'b': np.zeros(self.num_filters)}
-        self.dparams = {'dW': np.zeros(self.num_filters, self.incoming.num_units),
-                        'db': np.zeros(self.num_filters),
-                        'dX': None}
+        self.dparams = {'W': np.zeros((self.num_filters, num_incoming_channel)),
+                        'b': np.zeros(self.num_filters),
+                        'X': None}
 
 
     def forward(self, X):
@@ -81,12 +84,12 @@ class Conv(AbstractLayer):
         return out
 
 
-    def backward(self, dout):
+    def backward(self, upstream_derivatives):
         """
         A naive implementation of the backward pass for a convolutional layer.
 
         Inputs:
-        - dout: Upstream derivatives.
+        - upstream_derivatives: Upstream derivatives.
         - cache: A tuple of (x, w, b, conv_param) as in conv_forward_naive
 
         Returns a tuple of:
@@ -102,19 +105,24 @@ class Conv(AbstractLayer):
         dx = np.zeros_like(x)
         for n in xrange(N):
             for f in xrange(F):
-                helpers.cumulative_partial_x(weights=w[f, :, :, :], dimage=dx[n, :, :, :], dout=dout[n, f, :, :],
+                helpers.cumulative_partial_x(weights=w[f, :, :, :],
+                                             dimage=dx[n, :, :, :],
+                                             dout=upstream_derivatives[n, f, :, :],
                                              stride=stride, padding=padding)
 
         dw = np.zeros_like(w)
         for n in xrange(N):
             padded_image = helpers.pad_image(x[n, :, :, :], padding)
             for f in xrange(F):
-                helpers.cumulative_partial_w(image=padded_image, dout=dout[n, f, :, :], dw=dw[f, :, :, :], stride=stride)
+                helpers.cumulative_partial_w(image=padded_image,
+                                             dout=upstream_derivatives[n, f, :, :],
+                                             dw=dw[f, :, :, :],
+                                             stride=stride)
 
-        db = np.sum(dout, axis=(0, 2, 3))
+        db = np.sum(upstream_derivatives, axis=(0, 2, 3))
 
-        self.dparams['dX'] = dx
-        self.dparams['dW'] = dw
-        self.dparams['db'] = db
+        self.dparams['X'] = dx
+        self.dparams['W'] = dw
+        self.dparams['b'] = db
 
-        return self.dparams
+        return self.dparams['X']

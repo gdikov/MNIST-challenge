@@ -1,6 +1,6 @@
 import numpy as np
 
-def softmax(W, x):
+def softmax(scores):
     """
     Computes only the softmax activation
 
@@ -9,7 +9,6 @@ def softmax(W, x):
 
     @:return probabilities for each sample of belonging to each class
     """
-    scores = np.dot(x, W.T)
     log_c = -np.max(scores, axis=1)
     scores_better_numeric = np.exp((scores.T + log_c).T)
     sum_scores = np.sum(scores_better_numeric, axis=1)
@@ -18,7 +17,7 @@ def softmax(W, x):
     return probabilities
 
 
-def softmax_loss(W, x, y, reg=0.1):
+def softmax_loss(W, x, y, reg=0):
     """
     Computes the softmax loss function.
 
@@ -30,10 +29,10 @@ def softmax_loss(W, x, y, reg=0.1):
     """
 
     num_train = x.shape[0]
+    scores = np.dot(x, W.T)
+    probabilities = softmax(scores)
 
-    probabilities = softmax(W, x)
-
-    loss = np.sum(-np.log(probabilities[np.arange(num_train), y])) / num_train
+    loss = -np.sum(np.log(probabilities[np.arange(num_train), y])) / num_train
     loss += 0.5 * reg * np.sum(W * W)
 
     probabilities[np.arange(num_train), y] -= 1

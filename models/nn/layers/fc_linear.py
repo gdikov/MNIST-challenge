@@ -1,7 +1,7 @@
 import numpy as np
 
 from layer import AbstractLayer
-import models.nn.config as cfg
+import config as cfg
 
 class Linear(AbstractLayer):
 
@@ -18,12 +18,12 @@ class Linear(AbstractLayer):
 
 
     def init_params(self):
-        incomig_outputs = np.prod(self.incoming.output_shape())
+        incomig_outputs = np.prod(self.incoming.output_shape()[1:])
         self.params = {'W': 1e-3 * np.random.randn(self.num_units, incomig_outputs),
                        'b': np.zeros(self.num_units)}
-        self.dparams = {'dW': np.zeros(self.num_units, incomig_outputs),
-                        'db': np.zeros(self.num_units),
-                        'dX': None}
+        self.dparams = {'W': np.zeros(self.num_units, incomig_outputs),
+                        'b': np.zeros(self.num_units),
+                        'X': None}
 
 
     def forward(self, X):
@@ -45,7 +45,7 @@ class Linear(AbstractLayer):
         - cache: (x, w, b)
         """
 
-        out = X.reshape((X.shape[0], np.prod(X.shape[1:]))).dot(self.params['W']) + self.params['b']
+        out = X.reshape((X.shape[0], np.prod(X.shape[1:]))).dot(self.params['W'].T) + self.params['b']
         self.cache['X'] = X
 
         return out
@@ -66,10 +66,10 @@ class Linear(AbstractLayer):
         - dw: Gradient with respect to w, of shape (D, M)
         - db: Gradient with respect to b, of shape (M,)
         """
-        X = self.cache
+        X = self.cache['X']
 
-        self.dparams['dX'] = upstream_derivatives.dot(self.params['W'].T).reshape(X.shape)
-        self.dparams['dW'] = X.reshape((X.shape[0], np.prod(X.shape[1:]))).T.dot(upstream_derivatives)
-        self.dparams['db'] = np.sum(upstream_derivatives, axis=0)
+        self.dparams['X'] = np.dot(upstream_derivatives, self.params['W']).reshape(X.shape)
+        self.dparams['W'] = np.dot(upstream_derivatives.T, X.reshape((X.shape[0], np.prod(X.shape[1:]))))
+        self.dparams['b'] = np.sum(upstream_derivatives, axis=0)
 
-        return self.dparams
+        return self.dparams['X']

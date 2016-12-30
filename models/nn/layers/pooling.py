@@ -1,14 +1,17 @@
 import numpy as np
 
 from layer import AbstractLayer
-import models.nn.config as cfg
+import config as cfg
 
 
 class Pool(AbstractLayer):
     def __init__(self, incoming, pool_params=None):
         super(Pool, self).__init__(incoming)
         self.cache = dict()
-        self.pool_params = pool_params
+        if pool_params is None:
+            self.pool_params = cfg.pool_params
+        else:
+            self.pool_params = pool_params
         self.init_params()
 
 
@@ -23,7 +26,7 @@ class Pool(AbstractLayer):
 
     def init_params(self):
         self.params = None
-        self.dparams = None
+        self.dparams = dict()
 
     def forward(self, X):
         """
@@ -58,7 +61,7 @@ class Pool(AbstractLayer):
                     patch = X[n, :, h:h + pool_height, w:w + pool_width].reshape((C, pool_width * pool_height))
                     out[n, :, h / stride, w / stride] = np.max(patch, axis=1)
 
-        self.cache = X
+        self.cache['X'] = X
         return out
 
     def backward(self, upstream_derivatives):

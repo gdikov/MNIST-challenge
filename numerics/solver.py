@@ -9,18 +9,18 @@ class Solver(object):
 
 
 class SGD(Solver):
-    def __init__(self, data_dim=28*28, config=None):
+    def __init__(self, config=None):
         super(SGD, self).__init__()
         if config is None:
             config = dict()
-            config['learning_rate'] = 0.001
+            config['learning_rate'] = 0.01
             config['momentum'] = 0.9
             config['t'] = 0
         self.config = config
 
 
     def update(self, x, dx):
-        raise NotImplementedError
+        x -= self.config['learning_rate'] * dx
 
 
 class Adam(Solver):

@@ -44,7 +44,7 @@ class KFoldCrossValidation(CrossValidation):
 
 
     def _get_folds(self):
-        data_size = self.trainval['x'].shape[0]
+        data_size = self.trainval['x_train'].shape[0]
         folds = np.array_split(np.arange(data_size), self.k)
         # if the last split is unbalanced, merge with the one before the last
         if folds[self.k - 1].shape[0] < folds[0].shape[0] // 2:

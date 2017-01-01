@@ -19,6 +19,7 @@ class ReLU(AbstractLayer):
     def init_params(self):
         self.params = None
         self.dparams = dict()
+        self.intit_solvers()
 
 
     def forward(self, X):

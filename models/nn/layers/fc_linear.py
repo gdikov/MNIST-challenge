@@ -21,9 +21,10 @@ class Linear(AbstractLayer):
         incomig_outputs = np.prod(self.incoming.output_shape()[1:])
         self.params = {'W': 1e-3 * np.random.randn(self.num_units, incomig_outputs),
                        'b': np.zeros(self.num_units)}
-        self.dparams = {'W': np.zeros(self.num_units, incomig_outputs),
+        self.dparams = {'W': np.zeros((self.num_units, incomig_outputs)),
                         'b': np.zeros(self.num_units),
                         'X': None}
+        self.intit_solvers()
 
 
     def forward(self, X):

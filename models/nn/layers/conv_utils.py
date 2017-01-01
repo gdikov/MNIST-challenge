@@ -1,6 +1,5 @@
 import numpy as np
 
-
 def pad_image(image, padding):
     # pad along each chanel but not along the chanel array axis
     return np.pad(image, pad_width=((0, 0), (padding, padding), (padding, padding)), mode='constant',
@@ -59,10 +58,3 @@ def cumulative_partial_x(weights=None, dimage=None, dout=None, stride=0, padding
             dimage_one_example[:, h:h + H_kernel, w:w + W_kernel] += weights * dout[h / stride, w / stride]
 
     dimage += unpad_image(dimage_one_example, padding)
-
-
-
-
-
-
-

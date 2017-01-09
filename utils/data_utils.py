@@ -19,7 +19,7 @@ import struct
 from array import array as pyarray
 
 
-def load_MNIST(num_training=50000, num_validation=10000, num_test=10000):
+def load_MNIST(num_training=50000, num_validation=10000, num_test=10000, force_split=False):
     """
     Load the MNIST dataset from disk and perform preprocessing to prepare
     it for classifiers. These are the same steps as we used for the SVM, but
@@ -28,19 +28,36 @@ def load_MNIST(num_training=50000, num_validation=10000, num_test=10000):
 
     # Load the raw MNIST data
     MNIST_path = os.path.join(os.path.realpath(os.path.dirname(__file__)), "../data/")
+    path_to_pickles = os.path.join(MNIST_path, 'pickles')
+    path_to_train_mask = os.path.join(path_to_pickles, 'train_mask.npy')
+    path_to_val_mask = os.path.join(path_to_pickles, 'val_mask.npy')
+
     X_train, y_train = load_MNIST_from_raw(path=MNIST_path, dataset='training')
     X_test, y_test = load_MNIST_from_raw(path=MNIST_path, dataset='testing')
 
-
-
-    num_train_samples = X_train.shape[0]
-    # Split and subsample the data
     val_mask = np.array([])
-    if num_validation > 0:
-        val_mask = np.random.choice(num_train_samples, replace=False, size=num_validation)
-        X_val = X_train[val_mask]
-        y_val = y_train[val_mask]
-    train_mask = np.setdiff1d(np.arange(num_train_samples), val_mask, assume_unique=True)
+    if not force_split and os.path.exists(path_to_pickles):
+        if num_validation > 0:
+            with open(path_to_val_mask, 'rb') as f:
+                val_mask = np.load(f)
+        with open(path_to_train_mask, 'rb') as f:
+            train_mask = np.load(f)
+    else:
+        if not os.path.exists(path_to_pickles):
+            os.makedirs(path_to_pickles)
+
+        num_train_samples = X_train.shape[0]
+        # Split and subsample the data
+        if num_validation > 0:
+            val_mask = np.random.choice(num_train_samples, replace=False, size=num_validation)
+        train_mask = np.setdiff1d(np.arange(num_train_samples), val_mask, assume_unique=True)
+        with open(path_to_val_mask, 'wb') as f:
+            np.save(f, val_mask)
+        with open(path_to_train_mask, 'wb') as f:
+            np.save(f, train_mask)
+
+    X_val = X_train[val_mask]
+    y_val = y_train[val_mask]
     X_train = X_train[train_mask][:num_training]
     y_train = y_train[train_mask][:num_training]
     X_test = X_test[:num_test]
@@ -61,16 +78,13 @@ def load_MNIST(num_training=50000, num_validation=10000, num_test=10000):
 
     # Package data into a dictionary
     if num_validation > 0:
-        return {
-            'x_train': X_train, 'y_train': y_train,
-            'x_val': X_val, 'y_val': y_val,
-            'x_test': X_test, 'y_test': y_test,
-        }
+        data_dict = {'x_train': X_train, 'y_train': y_train,
+                     'x_val': X_val, 'y_val': y_val,
+                     'x_test': X_test, 'y_test': y_test}
     else:
-        return {
-            'x_train': X_train, 'y_train': y_train,
-            'x_test': X_test, 'y_test': y_test,
-        }
+        data_dict = {'x_train': X_train, 'y_train': y_train,
+                     'x_test': X_test, 'y_test': y_test}
+    return data_dict
 
 
 def load_MNIST_from_raw(dataset="training", digits=None,
@@ -199,30 +213,6 @@ def load_MNIST_from_raw(dataset="training", digits=None,
         return ret[0] # Don't return a tuple of one
     else:
         return ret
-
-
-def load_models(models_dir):
-    """
-    Load saved models from disk. This will attempt to unpickle all files in a
-    directory; any files that give errors on unpickling (such as README.txt) will
-    be skipped.
-
-    Inputs:
-    - models_dir: String giving the path to a directory containing model files.
-      Each model file is a pickled dictionary with a 'model' field.
-
-    Returns:
-    A dictionary mapping model file names to models.
-    """
-    models = {}
-    for model_file in os.listdir(models_dir):
-        with open(os.path.join(models_dir, model_file), 'rb') as f:
-            try:
-                models[model_file] = pickle.load(f)['model']
-            except pickle.UnpicklingError:
-                continue
-    return models
-
 
 if __name__ == "__main__":
 

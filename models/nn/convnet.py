@@ -1,9 +1,6 @@
-
-
 from models.model import AbstractModel
 from models.nn.layers import *
 
-from numerics.solver import SGD
 from numerics.softmax import softmax
 
 import config as cfg
@@ -17,7 +14,6 @@ class ConvolutionalNeuralNetwork(AbstractModel):
     def __init__(self):
         super(ConvolutionalNeuralNetwork, self).__init__('ConvNet')
         self.batch_size = cfg.batch_size
-        self.solver = SGD()
         self._build_network()
 
 
@@ -100,12 +96,14 @@ class ConvolutionalNeuralNetwork(AbstractModel):
         return loss, dsoftmax
 
 
-    def _batch_idx(self, data_size):
-        # maybe this is unneceserray because they are already shuffled
-        # but it doesn't harm much to do it again
-        num_training = data_size
-        shuffled_order = np.random.permutation(np.arange(num_training))
-        for x in np.array_split(shuffled_order, num_training // self.batch_size):
+    def _batch_idx(self, data_size, shuffle=True):
+        if shuffle:
+            # maybe this is unnecessary because they are already shuffled
+            # but it doesn't harm much to do it again
+            shuffled_order = np.random.permutation(np.arange(data_size))
+        else:
+            shuffled_order = np.arange(data_size)
+        for x in np.array_split(shuffled_order, data_size // self.batch_size):
             yield x
 
 
@@ -141,7 +139,7 @@ class ConvolutionalNeuralNetwork(AbstractModel):
         new_data = new_data.reshape(num_samples, dim_x * dim_y)
 
         scores_all = []
-        for idx in self._batch_idx(num_samples):
+        for idx in self._batch_idx(num_samples, shuffle=False):
             scores = self._compute_forward_pass(new_data[idx])
             scores_all.append(scores)
             print("{0}".format(np.mean(scores)))
@@ -152,16 +150,21 @@ class ConvolutionalNeuralNetwork(AbstractModel):
 if __name__ == "__main__":
     from utils.data_utils import load_MNIST
 
-    # data = load_MNIST(num_training=50000, num_validation=10000)
+    data = load_MNIST()
 
     model = ConvolutionalNeuralNetwork()
 
     model.load_trainable_params()
-    plot_filters(model.layers[4].params['W'], plot_shape=(5,10), channel=1)
+    # plot_filters(model.layers[4].params['W'], plot_shape=(5,10), channel=1)
     # model.fit(data, num_epochs=300)
+    #
+    predictions = model.predict(data['x_test'][:1000])
+    #
+    test_acc = np.sum(predictions == data['y_test'][:1000]) / float(predictions.shape[0]) * 100.
+    print("Validation accuracy: {0}"
+          .format(test_acc))
 
-    # predictions = model.predict(data['x_val'])
+    # miscalssified_idx = predictions != data['y_val'][:100]
+    # from utils.vizualiser import plot_digits
 
-    # test_acc = np.sum(predictions == data['y_val']) / float(predictions.shape[0]) * 100.
-    # print("Validation accuracy: {0}"
-    #       .format(test_acc))
+    # plot_digits(data['x_val'][:100][miscalssified_idx][:64], predictions[miscalssified_idx][:64], plot_shape=(8, 8))

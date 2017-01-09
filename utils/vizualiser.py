@@ -27,5 +27,5 @@ def plot_filters(filters, plot_shape, channel=1):
         image = filters[index, channel-1, :, :]
         axis.get_xaxis().set_visible(False)
         axis.get_yaxis().set_visible(False)
-        axis.imshow(image, cmap=plt.cm.Greys_r)
+        axis.imshow(image, cmap=plt.cm.Greys_r, interpolation='none')
     plt.show()

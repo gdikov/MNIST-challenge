@@ -7,6 +7,8 @@ import config as cfg
 import os
 import cPickle
 
+import time
+
 from utils.vizualiser import plot_filters
 
 
@@ -15,6 +17,8 @@ class ConvolutionalNeuralNetwork(AbstractModel):
         super(ConvolutionalNeuralNetwork, self).__init__('ConvNet')
         self.batch_size = cfg.batch_size
         self._build_network()
+        self.train_history = {'train_loss': [],
+                              'val_acc': []}
 
 
     def _build_network(self):
@@ -115,21 +119,27 @@ class ConvolutionalNeuralNetwork(AbstractModel):
         self.data['x_train'] = self.data['x_train'].reshape(num_samples, dim_x * dim_y)
 
         num_epochs = kwargs.get('num_epochs', 100)
-        best_epoch_loss = np.infty
+        best_val_acc = 0.0
         for i in xrange(num_epochs):
-            losses = []
+            epoch_losses = []
             for idx in self._batch_idx(num_samples):
                 scores = self._compute_forward_pass(self.data['x_train'][idx])
                 loss, dscores = self._compute_loss(scores, self.data['y_train'][idx])
                 self._compute_backward_pass(dscores)
-                losses.append(loss)
-                print(loss)
-            mean_loss = np.mean(losses)
-            if mean_loss < best_epoch_loss:
-                print("Saving weights on epoch: {0}".format(i))
+                self.train_history['train_loss'].append(loss)
+                epoch_losses.append(loss)
+                print("Minibatch train loss: {}".format(loss))
+            # validate
+            val_predictions = self.predict(data['x_val'])
+            val_acc = np.sum(val_predictions == data['y_val']) / float(val_predictions.shape[0]) * 100.
+            print("Validation accuracy: {0}".format(val_acc))
+            self.train_history['val_acc'].append(val_acc)
+
+            if val_acc > best_val_acc:
+                print("Saving weights")
                 self.save_trainable_params()
-                best_epoch_loss = mean_loss
-            print("Epoch: {0}, loss: {1}".format(i, mean_loss))
+                best_val_acc = val_acc
+            print("Epoch: {0}, mean loss: {1}".format(i, np.mean(epoch_losses)))
 
 
     def predict(self, new_data):
@@ -139,10 +149,9 @@ class ConvolutionalNeuralNetwork(AbstractModel):
         new_data = new_data.reshape(num_samples, dim_x * dim_y)
 
         scores_all = []
-        for idx in self._batch_idx(num_samples, shuffle=False):
+        for i, idx in enumerate(self._batch_idx(num_samples, shuffle=False)):
             scores = self._compute_forward_pass(new_data[idx])
             scores_all.append(scores)
-            print("{0}".format(np.mean(scores)))
         scores_all = np.concatenate(scores_all)
         return np.argmax(scores_all, axis=1)
 
@@ -154,17 +163,17 @@ if __name__ == "__main__":
 
     model = ConvolutionalNeuralNetwork()
 
-    model.load_trainable_params()
-    # plot_filters(model.layers[4].params['W'], plot_shape=(5,10), channel=1)
-    # model.fit(data, num_epochs=300)
+    # model.load_trainable_params()
+    # plot_filters(model.layers[1].params['W'], plot_shape=(2,10), channel=1)
+    model.fit(data, num_epochs=30)
     #
-    predictions = model.predict(data['x_test'][:1000])
+    # predictions = model.predict(data['x_test'][:1000])
+    # #
+    # test_acc = np.sum(predictions == data['y_test'][:1000]) / float(predictions.shape[0]) * 100.
+    # print("Validation accuracy: {0}"
+    #       .format(test_acc))
     #
-    test_acc = np.sum(predictions == data['y_test'][:1000]) / float(predictions.shape[0]) * 100.
-    print("Validation accuracy: {0}"
-          .format(test_acc))
-
     # miscalssified_idx = predictions != data['y_val'][:100]
     # from utils.vizualiser import plot_digits
-
+    # #
     # plot_digits(data['x_val'][:100][miscalssified_idx][:64], predictions[miscalssified_idx][:64], plot_shape=(8, 8))

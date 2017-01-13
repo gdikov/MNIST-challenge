@@ -7,8 +7,6 @@ import config as cfg
 import os
 import cPickle
 
-from utils.vizualiser import plot_filters
-
 
 class BasicNeuralNetwork(AbstractModel):
     def __init__(self):
@@ -109,10 +107,10 @@ class BasicNeuralNetwork(AbstractModel):
                 self._compute_backward_pass(dscores)
                 losses.append(loss)
             mean_loss = np.mean(losses)
-            if mean_loss < best_epoch_loss:
-                print("Saving weights on epoch: {0}".format(i))
-                self.save_trainable_params()
-                best_epoch_loss = mean_loss
+            # if mean_loss < best_epoch_loss:
+            #     print("Saving weights on epoch: {0}".format(i))
+            #     self.save_trainable_params()
+            #     best_epoch_loss = mean_loss
             print("Epoch: {0}, loss: {1}".format(i, mean_loss))
 
 
@@ -134,21 +132,21 @@ class BasicNeuralNetwork(AbstractModel):
 if __name__ == "__main__":
     from utils.data_utils import load_MNIST
 
-    data = load_MNIST(num_training=50000, num_validation=10000)
+    data = load_MNIST()
 
     model = BasicNeuralNetwork()
 
-    model.load_trainable_params()
-    # plot_filters(model.layers[1].params['W'], plot_shape=(5,10), channel=1)
-    # model.fit(data, num_epochs=50)
+    # model.load_trainable_params()
 
-    predictions = model.predict(data['x_test'])
+    model.fit(data, num_epochs=30)
+
+    predictions = model.predict(data['x_val'])
     #
-    test_acc = np.sum(predictions == data['y_test']) / float(predictions.shape[0]) * 100.
+    test_acc = np.sum(predictions == data['y_val']) / float(predictions.shape[0]) * 100.
     print("Validation accuracy: {0}"
           .format(test_acc))
 
-    # miscalssified_idx = predictions != data['y_val'][:100]
-    # from utils.vizualiser import plot_digits
+    miscalssified_idx = predictions != data['y_val']
+    from utils.vizualiser import plot_digits
 
-    # plot_digits(data['x_val'][:100][miscalssified_idx][:64], predictions[miscalssified_idx][:64], plot_shape=(8, 8))
+    plot_digits(data['x_val'][miscalssified_idx][:64], predictions[miscalssified_idx][:64], plot_shape=(8, 8))

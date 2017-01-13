@@ -43,7 +43,10 @@ class ConvolutionalNeuralNetwork(AbstractModel):
 
         linear1 = Linear(incoming=pool2, num_units=500)
         lrelu1 = ReLU(incoming=linear1)
-        out_layer = Linear(incoming=lrelu1, num_units=10)
+
+        dropout1 = Dropout(incoming=lrelu1, p=0.5)
+
+        out_layer = Linear(incoming=dropout1, num_units=10)
         self.layers = (inp_layer,
                        conv1, relu1, pool1,
                        conv2, relu2, pool2,
@@ -74,10 +77,10 @@ class ConvolutionalNeuralNetwork(AbstractModel):
                     layer.params = cPickle.load(f)
 
 
-    def _compute_forward_pass(self, inp_data_batch):
+    def _compute_forward_pass(self, inp_data_batch, mode):
         out_data_batch = self.layers[0].forward(inp_data_batch)
         for layer_id in xrange(1, len(self.layers)):
-            out_data_batch = self.layers[layer_id].forward(out_data_batch)
+            out_data_batch = self.layers[layer_id].forward(out_data_batch, mode=mode)
         return out_data_batch
 
 
@@ -123,7 +126,7 @@ class ConvolutionalNeuralNetwork(AbstractModel):
         for i in xrange(num_epochs):
             epoch_losses = []
             for idx in self._batch_idx(num_samples):
-                scores = self._compute_forward_pass(self.data['x_train'][idx])
+                scores = self._compute_forward_pass(self.data['x_train'][idx], mode='train')
                 loss, dscores = self._compute_loss(scores, self.data['y_train'][idx])
                 self._compute_backward_pass(dscores)
                 self.train_history['train_loss'].append(loss)
@@ -132,14 +135,13 @@ class ConvolutionalNeuralNetwork(AbstractModel):
             # validate
             val_predictions = self.predict(data['x_val'])
             val_acc = np.sum(val_predictions == data['y_val']) / float(val_predictions.shape[0]) * 100.
-            print("Validation accuracy: {0}".format(val_acc))
             self.train_history['val_acc'].append(val_acc)
 
             if val_acc > best_val_acc:
                 print("Saving weights")
                 self.save_trainable_params()
                 best_val_acc = val_acc
-            print("Epoch: {0}, mean loss: {1}".format(i, np.mean(epoch_losses)))
+            print("Epoch: {0}, mean loss: {1}, validation accuracy: {2}".format(i, np.mean(epoch_losses), val_acc))
 
 
     def predict(self, new_data):
@@ -150,7 +152,7 @@ class ConvolutionalNeuralNetwork(AbstractModel):
 
         scores_all = []
         for i, idx in enumerate(self._batch_idx(num_samples, shuffle=False)):
-            scores = self._compute_forward_pass(new_data[idx])
+            scores = self._compute_forward_pass(new_data[idx], mode='test')
             scores_all.append(scores)
         scores_all = np.concatenate(scores_all)
         return np.argmax(scores_all, axis=1)
@@ -165,7 +167,7 @@ if __name__ == "__main__":
 
     # model.load_trainable_params()
     # plot_filters(model.layers[1].params['W'], plot_shape=(2,10), channel=1)
-    model.fit(data, num_epochs=30)
+    model.fit(data, num_epochs=100)
     #
     # predictions = model.predict(data['x_test'][:1000])
     # #

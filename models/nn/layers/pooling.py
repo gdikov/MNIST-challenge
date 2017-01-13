@@ -29,7 +29,7 @@ class Pool(AbstractLayer):
         self.dparams = dict()
         self.intit_solvers()
 
-    def forward(self, X):
+    def forward(self, X, mode='train'):
         """
         A naive implementation of the forward pass for a max pooling layer.
 
@@ -62,7 +62,8 @@ class Pool(AbstractLayer):
                     patch = X[n, :, h:h + pool_height, w:w + pool_width].reshape((C, pool_width * pool_height))
                     out[n, :, h / stride, w / stride] = np.max(patch, axis=1)
 
-        self.cache['X'] = X
+        if mode == 'train':
+            self.cache['X'] = X
         return out
 
     def backward(self, upstream_derivatives):

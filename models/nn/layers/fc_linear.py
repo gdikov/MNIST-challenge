@@ -27,7 +27,7 @@ class Linear(AbstractLayer):
         self.intit_solvers()
 
 
-    def forward(self, X):
+    def forward(self, X, mode='train'):
         """
         Computes the forward pass for an affine (fully-connected) layer.
 
@@ -47,7 +47,8 @@ class Linear(AbstractLayer):
         """
 
         out = X.reshape((X.shape[0], np.prod(X.shape[1:]))).dot(self.params['W'].T) + self.params['b']
-        self.cache['X'] = X
+        if mode == 'train':
+            self.cache['X'] = X
 
         return out
 

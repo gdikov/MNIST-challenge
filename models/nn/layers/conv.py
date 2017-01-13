@@ -39,7 +39,7 @@ class Conv(AbstractLayer):
         self.intit_solvers()
 
 
-    def forward(self, X):
+    def forward(self, X, mode='train'):
         """
         A naive implementation of the forward pass for a convolutional layer.
 
@@ -80,7 +80,8 @@ class Conv(AbstractLayer):
                                      kernel=self.params['W'][f, :, :, :], bias=self.params['b'][f],
                                      stride=stride)
 
-        self.cache['X'] = X
+        if mode == 'train':
+            self.cache['X'] = X
 
         return out
 

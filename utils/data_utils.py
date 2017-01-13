@@ -56,8 +56,8 @@ def load_MNIST(num_training=50000, num_validation=10000, num_test=10000, force_s
         with open(path_to_train_mask, 'wb') as f:
             np.save(f, train_mask)
 
-    X_val = X_train[val_mask]
-    y_val = y_train[val_mask]
+    X_val = X_train[val_mask][:num_validation]
+    y_val = y_train[val_mask][:num_validation]
     X_train = X_train[train_mask][:num_training]
     y_train = y_train[train_mask][:num_training]
     X_test = X_test[:num_test]
@@ -68,11 +68,12 @@ def load_MNIST(num_training=50000, num_validation=10000, num_test=10000, force_s
             "Something went worng while splitting the dataset into train and validation subsets"
 
     # Normalize the data: subtract the mean image
-    mean_image = np.mean(X_train, axis=0)
-    X_train -= mean_image
-    if num_validation > 0:
-        X_val -= mean_image
-    X_test -= mean_image
+    if num_training > 1:
+        mean_image = np.mean(X_train, axis=0)
+        X_train -= mean_image
+        if num_validation > 0:
+            X_val -= mean_image
+        X_test -= mean_image
 
     print("MNIST dataset is loaded from disk and normalized to {0} mean".format(np.mean(X_train)))
 

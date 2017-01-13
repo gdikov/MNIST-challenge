@@ -22,7 +22,7 @@ class ReLU(AbstractLayer):
         self.intit_solvers()
 
 
-    def forward(self, X):
+    def forward(self, X, mode='train'):
         """
         Computes the forward pass for a layer of rectified linear units (ReLUs).
 
@@ -37,7 +37,9 @@ class ReLU(AbstractLayer):
             out = np.maximum(0, X)
         else:
             out = np.maximum(1e-2 * X, X)
-        self.cache['X'] = X
+
+        if mode == 'train':
+            self.cache['X'] = X
         return out
 
 

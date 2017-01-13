@@ -24,7 +24,7 @@ class Batchnorm(AbstractLayer):
         self.dparams = dict()
 
 
-    def forward(self, x, gamma, beta, bn_param):
+    def forward(self, x, gamma, beta, bn_param, mode='train'):
         """
         Forward pass for batch normalization.
 
@@ -52,7 +52,7 @@ class Batchnorm(AbstractLayer):
         - gamma: Scale parameter of shape (D,)
         - beta: Shift paremeter of shape (D,)
         - bn_param: Dictionary with the following keys:
-          - mode: 'train' or 'test'; required
+          - shape_mode: 'train' or 'test'; required
           - eps: Constant for numeric stability
           - momentum: Constant for running mean / variance.
           - running_mean: Array of shape (D,) giving running mean of features
@@ -62,7 +62,6 @@ class Batchnorm(AbstractLayer):
         - out: of shape (N, D)
         - cache: A tuple of values needed in the backward pass
         """
-        mode = self.bn_params['mode']
         eps = self.bn_params.get('eps', 1e-5)
         momentum = self.bn_params.get('momentum', 0.9)
 
@@ -88,7 +87,7 @@ class Batchnorm(AbstractLayer):
             out = gamma * normalized_x + beta
             self.cache = (x, normalized_x, centered_x, normalization_factor, gamma)
         else:
-            raise ValueError('Invalid forward batchnorm mode "%s"' % mode)
+            raise ValueError('Invalid forward batchnorm shape_mode "%s"' % mode)
 
         # Store the updated running means back into bn_param
         self.bn_params['running_mean'] = running_mean

@@ -20,7 +20,7 @@ class BasicNeuralNetwork(AbstractModel):
         Build a modified version of LeNet
         :return:
         """
-        inp_layer = Input(mode='vec')
+        inp_layer = Input(shape='vec')
 
         linear1 = Linear(incoming=inp_layer, num_units=200)
         lrelu1 = ReLU(incoming=linear1)

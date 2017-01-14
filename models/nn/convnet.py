@@ -7,9 +7,7 @@ import config as cfg
 import os
 import cPickle
 
-import time
-
-from utils.vizualiser import plot_filters
+# from utils.vizualiser import plot_filters
 
 
 class ConvolutionalNeuralNetwork(AbstractModel):
@@ -51,6 +49,7 @@ class ConvolutionalNeuralNetwork(AbstractModel):
                        conv1, relu1, pool1,
                        conv2, relu2, pool2,
                        linear1, lrelu1,
+                       dropout1,
                        out_layer)
 
 

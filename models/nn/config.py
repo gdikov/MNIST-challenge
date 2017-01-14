@@ -1,7 +1,7 @@
 
 
 # Optimization parameters
-batch_size = 1
+batch_size = 100
 
 # Input data parameters
 image_width = 28

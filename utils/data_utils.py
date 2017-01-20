@@ -19,7 +19,7 @@ import struct
 from array import array as pyarray
 
 
-def load_MNIST(num_training=50000, num_validation=10000, num_test=10000, force_split=False):
+def load_MNIST(num_training=50000, num_validation=10000, num_test=10000, force_split=False, verbose=False):
     """
     Load the MNIST dataset from disk and perform preprocessing to prepare
     it for classifiers. These are the same steps as we used for the SVM, but
@@ -35,13 +35,15 @@ def load_MNIST(num_training=50000, num_validation=10000, num_test=10000, force_s
     X_train, y_train = load_MNIST_from_raw(path=MNIST_path, dataset='training')
     X_test, y_test = load_MNIST_from_raw(path=MNIST_path, dataset='testing')
 
-    val_mask = np.array([])
+    val_mask = np.array([], dtype=np.int32)
+    train_mask = np.arange(num_training)
     if not force_split and os.path.exists(path_to_pickles):
         if num_validation > 0:
             with open(path_to_val_mask, 'rb') as f:
                 val_mask = np.load(f)
-        with open(path_to_train_mask, 'rb') as f:
-            train_mask = np.load(f)
+        if num_training <= 50000:
+            with open(path_to_train_mask, 'rb') as f:
+                train_mask = np.load(f)
     else:
         if not os.path.exists(path_to_pickles):
             os.makedirs(path_to_pickles)
@@ -65,7 +67,7 @@ def load_MNIST(num_training=50000, num_validation=10000, num_test=10000, force_s
 
     if num_validation > 0:
         assert X_val.shape[0] + X_train.shape[0] == num_training + num_validation, \
-            "Something went worng while splitting the dataset into train and validation subsets"
+            "Something went wrong while splitting the dataset into train and validation subsets"
 
     # Normalize the data: subtract the mean image
     if num_training > 1:
@@ -75,17 +77,19 @@ def load_MNIST(num_training=50000, num_validation=10000, num_test=10000, force_s
             X_val -= mean_image
         X_test -= mean_image
 
-    print("MNIST dataset is loaded from disk and normalized to {0} mean".format(np.mean(X_train)))
+    if verbose:
+        print("MNIST dataset is loaded from disk and normalized to {0} mean".format(np.mean(X_train)))
 
     # Package data into a dictionary
     if num_validation > 0:
-        data_dict = {'x_train': X_train, 'y_train': y_train,
-                     'x_val': X_val, 'y_val': y_val,
-                     'x_test': X_test, 'y_test': y_test}
+        data_dict_trainval = {'x_train': X_train, 'y_train': y_train,
+                              'x_val': X_val, 'y_val': y_val}
+        data_dict_test = {'x_test': X_test, 'y_test': y_test}
     else:
-        data_dict = {'x_train': X_train, 'y_train': y_train,
-                     'x_test': X_test, 'y_test': y_test}
-    return data_dict
+        data_dict_trainval = {'x_train': X_train, 'y_train': y_train}
+        data_dict_test = {'x_test': X_test, 'y_test': y_test}
+
+    return data_dict_trainval, data_dict_test
 
 
 def load_MNIST_from_raw(dataset="training", digits=None,
@@ -94,64 +98,6 @@ def load_MNIST_from_raw(dataset="training", digits=None,
                         return_indices=False):
     """
     Loads MNIST files into a 3D numpy array.
-
-    You have to download the data separately from [MNIST]_. It is recommended
-    to set the environment variable ``MNIST`` to point to the folder where you
-    put the data, so that you don't have to select path. On a Linux+bash setup,
-    this is done by adding the following to your ``.bashrc``::
-
-        export MNIST=/path/to/mnist
-
-    Parameters
-    ----------
-    dataset : str
-        Either "training" or "testing", depending on which dataset you want to
-        load.
-    digits : list
-        Integer list of digits to load. The entire database is loaded if set to
-        ``None``. Default is ``None``.
-    path : str
-        Path to your MNIST datafiles. The default is ``None``, which will try
-        to take the path from your environment variable ``MNIST``. The data can
-        be downloaded from http://yann.lecun.com/exdb/mnist/.
-    asbytes : bool
-        If True, returns data as ``numpy.uint8`` in [0, 255] as opposed to
-        ``numpy.float64`` in [0.0, 1.0].
-    selection : slice
-        Using a `slice` object, specify what subset of the dataset to load. An
-        example is ``slice(0, 20, 2)``, which would load every other digit
-        until--but not including--the twentieth.
-    return_labels : bool
-        Specify whether or not labels should be returned. This is also a speed
-        performance if digits are not specified, since then the labels file
-        does not need to be read at all.
-    return_indicies : bool
-        Specify whether or not to return the MNIST indices that were fetched.
-        This is valuable only if digits is specified, because in that case it
-        can be valuable to know how far
-        in the database it reached.
-
-    Returns
-    -------
-    images : ndarray
-        Image data of shape ``(N, rows, cols)``, where ``N`` is the number of images. If neither labels nor inices are returned, then this is returned directly, and not inside a 1-sized tuple.
-    labels : ndarray
-        Array of size ``N`` describing the labels. Returned only if ``return_labels`` is `True`, which is default.
-    indices : ndarray
-        The indices in the database that were returned.
-
-    Examples
-    --------
-    Assuming that you have downloaded the MNIST database and set the
-    environment variable ``$MNIST`` point to the folder, this will load all
-    images and labels from the training set:
-
-    >>> images, labels = ag.io.load_mnist('training') # doctest: +SKIP
-
-    Load 100 sevens from the testing set:
-
-    >>> sevens = ag.io.load_mnist('testing', digits=[7], selection=slice(0, 100), return_labels=False) # doctest: +SKIP
-
     """
 
     # The files are assumed to have these names and should be found in 'path'

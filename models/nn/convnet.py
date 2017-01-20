@@ -7,7 +7,7 @@ import config as cfg
 import os
 import cPickle
 
-# from utils.vizualiser import plot_filters
+from utils.vizualiser import plot_filters
 
 
 class ConvolutionalNeuralNetwork(AbstractModel):
@@ -164,15 +164,15 @@ if __name__ == "__main__":
 
     model = ConvolutionalNeuralNetwork()
 
-    # model.load_trainable_params()
+    model.load_trainable_params()
     # plot_filters(model.layers[1].params['W'], plot_shape=(2,10), channel=1)
-    model.fit(data, num_epochs=100)
+    # model.fit(data, num_epochs=100)
     #
-    # predictions = model.predict(data['x_test'][:1000])
+    predictions = model.predict(data['x_test'][:1000])
     # #
-    # test_acc = np.sum(predictions == data['y_test'][:1000]) / float(predictions.shape[0]) * 100.
-    # print("Validation accuracy: {0}"
-    #       .format(test_acc))
+    test_acc = np.sum(predictions == data['y_test'][:1000]) / float(predictions.shape[0]) * 100.
+    print("Validation accuracy: {0}"
+          .format(test_acc))
     #
     # miscalssified_idx = predictions != data['y_val'][:100]
     # from utils.vizualiser import plot_digits

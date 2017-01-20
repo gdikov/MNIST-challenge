@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 from models.model import AbstractModel
 from numerics.solver import Adam
@@ -6,19 +7,21 @@ from numerics.softmax import softmax_loss, softmax
 
 class LogisticRegression(AbstractModel):
 
-    def __init__(self, batch_size=10000, regularisation=0.1, add_bias=False):
+    def __init__(self, batch_size=10000, add_bias=False):
         super(LogisticRegression, self).__init__('LogisticRegression')
         self.data = None
         self.batch_size = batch_size
-        self.regularisation = regularisation
         self.add_bias = add_bias
         self.num_classes = 10
+        solver_config = {'learning_rate': 0.13, 'beta1': 0.9, 'beta2': 0.999, 'epsilon': 1e-8, 't': 0}
         if add_bias:
-            self.solver = Adam(data_dim=28*28+1)
+            solver_config['mov_avg_grad'] = np.zeros(28*28+1)
+            solver_config['mov_avg_sq_grad'] = np.zeros(28*28+1)
         else:
-            self.solver = Adam(data_dim=28*28)
+            solver_config['mov_avg_grad'] = np.zeros(28*28)
+            solver_config['mov_avg_sq_grad'] = np.zeros(28*28)
+        self.solver = Adam(config=solver_config)
         self._init_params()
-
 
 
     def _init_params(self):
@@ -27,6 +30,19 @@ class LogisticRegression(AbstractModel):
             self.W = np.hstack((self.W, np.zeros((self.num_classes, 1))))
         else:
             self.W = 0.01 * np.random.randn(self.num_classes, 28 * 28)
+
+
+    def save_trainable_params(self):
+        path_to_params = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'optimal_W.npy')
+        np.save(path_to_params, self.W)
+
+
+    def load_trainable_params(self):
+        path_to_params = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'optimal_W.npy')
+        if not os.path.exists(path_to_params):
+            print("\tPath to parameters not found at: {}".format(path_to_params))
+            raise IOError
+        self.W = np.load(path_to_params)
 
 
     def fit(self, train_data, **kwargs):
@@ -40,6 +56,12 @@ class LogisticRegression(AbstractModel):
         # one_hot_labels = OneHot(10).generate_labels(self.data['y_train'])
 
         num_epochs = kwargs.get('num_epochs', 100)
+        regularisation = kwargs.get('reg', 0.0)
+        reinit = kwargs.get('reinit', True)
+        verbose = kwargs.get('verbose', False)
+        if reinit:
+            self._init_params()
+
         for i in xrange(num_epochs):
             losses = []
             for idx in self._batch_idx():
@@ -47,10 +69,11 @@ class LogisticRegression(AbstractModel):
                 loss, dW = softmax_loss(self.W,
                                         self.data['x_train'][idx],
                                         self.data['y_train'][idx],
-                                        reg=self.regularisation)
+                                        reg=regularisation)
                 self.solver.update(self.W, dW)
                 losses.append(loss)
-            print("Epoch: {0}, loss: {1}".format(i, np.mean(losses)))
+            if verbose:
+                print("\t\tEpoch: {0}, loss: {1}".format(i, np.mean(losses)))
 
 
     def _batch_idx(self):

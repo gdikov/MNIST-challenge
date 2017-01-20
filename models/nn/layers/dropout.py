@@ -67,6 +67,6 @@ class Dropout(AbstractLayer):
         """
         mask = self.cache
         self.dparams['X'] = upstream_derivatives * mask
-        return self.dparams
+        return self.dparams['X']
 
 

@@ -12,7 +12,7 @@ if __name__ == "__main__":
     model_testers = (test_logreg,)# test_logreg)#, test_convnet, test_gp)
 
     for name, test in zip(model_names, model_testers):
-        print("Testing the {} classifier...".format(name))
+        print("Evaluating the {} classifier...".format(name))
         test_time, result = measure_test_time(test)
-        print("\tTested in {} s (including data loading time)".format(test_time))
+        print("\tEvaluated in {} s (including data loading time)".format(test_time))
         print("\tTest accuracy = {0}% (Test error = {1}%)".format(result, 100. - result))

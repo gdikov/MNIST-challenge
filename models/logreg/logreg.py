@@ -59,9 +59,11 @@ class LogisticRegression(AbstractModel):
         regularisation = kwargs.get('reg', 0.0)
         reinit = kwargs.get('reinit', True)
         verbose = kwargs.get('verbose', False)
+        save_best = kwargs.get('save_best', False)
         if reinit:
             self._init_params()
 
+        lowest_loss = np.inf
         for i in xrange(num_epochs):
             losses = []
             for idx in self._batch_idx():
@@ -72,8 +74,13 @@ class LogisticRegression(AbstractModel):
                                         reg=regularisation)
                 self.solver.update(self.W, dW)
                 losses.append(loss)
+            mean_loss = np.mean(losses)
             if verbose:
-                print("\t\tEpoch: {0}, loss: {1}".format(i, np.mean(losses)))
+                print("\t\tEpoch: {0}, loss: {1}".format(i, mean_loss))
+            if save_best:
+                if mean_loss < lowest_loss:
+                    lowest_loss = mean_loss
+                    self.save_trainable_params()
 
 
     def _batch_idx(self):

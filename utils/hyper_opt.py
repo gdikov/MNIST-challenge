@@ -50,7 +50,7 @@ class KFoldCrossValidation(CrossValidation):
             for reg in param_range:
                 micro_acc = []
                 for train_data, val_data in self._get_folds():
-                    model.fit(train_data, num_epochs=50, reg=reg, reinit=True)
+                    model.fit(train_data, num_epochs=50, reg=reg, reinit=True, verbose=False, save_best=False)
                     predictions = model.predict(val_data['x'])
                     macc = np.sum(predictions == val_data['y']) / float(predictions.shape[0]) * 100.0
                     micro_acc.append(macc)

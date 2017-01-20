@@ -54,14 +54,13 @@ def test_logreg(train_from_scratch=True, verbose=True):
     model = LogisticRegression(batch_size=10000, add_bias=True)
 
     if train_from_scratch or not os.path.exists(os.path.join(path_to_models, 'optimal_W.npy')):
-        # validator = KFoldCrossValidation(data=data_train, k=3)
-        # regularisation_range = [0., 1e-5, 1e-4, 1e-3, 1e-2]
-        # best_reg = validator.validate(model=model, ranges=regularisation_range, verbose=verbose)
-        model.fit(data_train, num_epochs=50, reg=0.0001, reinit=True, verbose=True)
-        model.save_trainable_params()
+        validator = KFoldCrossValidation(data=data_train, k=3)
+        regularisation_range = [0., 1e-5, 1e-4, 1e-3, 1e-2]
+        best_reg = validator.validate(model=model, ranges=regularisation_range, verbose=verbose)
+        model.fit(data_train, num_epochs=100, reg=best_reg, reinit=True, verbose=True, save_best=True)
 
-    model.load_trainable_params()
     print("\tLoading pre-computed optimal weight matrix W")
+    model.load_trainable_params()
 
     predictions = model.predict(data_test['x_test'])
 

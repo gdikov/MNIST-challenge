@@ -1,5 +1,5 @@
 from models.nn.layers import AbstractLayer
-import config as cfg
+import models.nn.config as cfg
 
 class Input(AbstractLayer):
     def __init__(self, shape='img'):

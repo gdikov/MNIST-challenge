@@ -1,7 +1,7 @@
 import numpy as np
 
 from layer import AbstractLayer
-import config as cfg
+import models.nn.config as cfg
 
 class Linear(AbstractLayer):
 

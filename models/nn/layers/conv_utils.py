@@ -11,13 +11,13 @@ def unpad_image(image, padding):
     return image[:, padding:-padding, padding:-padding]
 
 
-def convolve_img(image=None, result=None, kernel=None, bias=0, stride=0):
+def convolve_img_naive(image=None, result=None, kernel=None, bias=0, stride=1):
     H_out, W_out = result.shape
     _, H_image, W_image = image.shape
     _, H_kernel, W_kernel = kernel.shape
 
-    for h in xrange(0, H_image - H_kernel + stride, stride):
-        for w in xrange(0, W_image - W_kernel + stride, stride):
+    for h in range(0, H_image - H_kernel + stride, stride):
+        for w in range(0, W_image - W_kernel + stride, stride):
             # crop a patch from the image (take all the color channels)
             patch = image[:, h:h + H_kernel, w:w + W_kernel]
             # do the dot product, add the bias and store the result
@@ -25,7 +25,7 @@ def convolve_img(image=None, result=None, kernel=None, bias=0, stride=0):
             result[h / stride, w / stride] = np.sum(patch * kernel) + bias
 
 
-def cumulative_partial_w(image=None, dout=None, dw=None, stride=0):
+def cumulative_partial_w(image=None, dout=None, dw=None, stride=1):
     H_out, W_out = dout.shape
     _, H_image, W_image = image.shape
     _, H_kernel, W_kernel = dw.shape
@@ -42,7 +42,7 @@ def cumulative_partial_w(image=None, dout=None, dw=None, stride=0):
     dw += dw_one_example
 
 
-def cumulative_partial_x(weights=None, dimage=None, dout=None, stride=0, padding=0):
+def cumulative_partial_x(weights=None, dimage=None, dout=None, stride=1, padding=0):
     H_out, W_out = dout.shape
     C, H_image, W_image = dimage.shape
     # compensate for the padding, later will be unpadded
@@ -58,3 +58,9 @@ def cumulative_partial_x(weights=None, dimage=None, dout=None, stride=0, padding
             dimage_one_example[:, h:h + H_kernel, w:w + W_kernel] += weights * dout[h / stride, w / stride]
 
     dimage += unpad_image(dimage_one_example, padding)
+
+import scipy.signal as sig
+def convolve_img_scipy(image=None, result=None, kernel=None, bias=0, stride=1):
+    for k in xrange(kernel.shape[0]):
+        result[:, :] += sig.convolve2d(image[k, :, :], np.flipud(np.fliplr(kernel[k, :, :])), mode='valid')
+    result += bias

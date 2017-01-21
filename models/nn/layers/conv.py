@@ -1,15 +1,15 @@
 import conv_utils as helpers
 import numpy as np
 
-
 from layer import AbstractLayer
-import config as cfg
+import models.nn.config as cfg
 
 class Conv(AbstractLayer):
-    def __init__(self, incoming, num_filters=32, conv_params=None):
+    def __init__(self, incoming, num_filters=32, conv_params=None, conv_mode='scipy'):
         super(Conv, self).__init__(incoming)
         self.num_filters = num_filters
         self.cache = dict()
+        self.conv_mode = conv_mode
         if conv_params is None:
             self.conv_params = {'stride': 1, 'pad': (3 - 1) / 2, 'filter_size': 3}
         else:
@@ -70,15 +70,24 @@ class Conv(AbstractLayer):
         W_out = 1 + (W + 2 * padding - WW) / stride
         out = np.zeros((N, F, H_out, W_out))
 
-        # for each example
-        for n in xrange(N):
-            # add the padding to the image.
-            padded_image = helpers.pad_image(X[n, :, :, :], padding)
-            # apply each filter on the input image
-            for f in xrange(F):
-                helpers.convolve_img(image=padded_image, result=out[n, f, :, :],
-                                     kernel=self.params['W'][f, :, :, :], bias=self.params['b'][f],
-                                     stride=stride)
+        if self.conv_mode == 'naive':
+            # for each example
+            for n in xrange(N):
+                # add the padding to the image.
+                padded_image = helpers.pad_image(X[n, :, :, :], padding)
+                # apply each filter on the input image
+                for f in xrange(F):
+                    helpers.convolve_img_naive(image=padded_image, result=out[n, f, :, :],
+                                         kernel=self.params['W'][f, :, :, :], bias=self.params['b'][f],
+                                         stride=stride)
+
+        elif self.conv_mode == 'scipy':
+            for n in xrange(N):
+                padded_image = helpers.pad_image(X[n, :, :, :], padding)
+                for f in xrange(F):
+                    helpers.convolve_img_scipy(image=padded_image, result=out[n, f, :, :],
+                                               kernel=self.params['W'][f, :, :, :], bias=self.params['b'][f],
+                                               stride=stride)
 
         if mode == 'train':
             self.cache['X'] = X

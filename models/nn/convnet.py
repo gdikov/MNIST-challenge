@@ -25,17 +25,21 @@ class ConvolutionalNeuralNetwork(AbstractModel):
         :return:
         """
         inp_layer = Input()
+        filter_size = 5
+        conv_mode = 'scipy'
 
         conv1 = Conv(incoming=inp_layer,
-                     conv_params={'stride': 1, 'pad': (5 - 1) / 2, 'filter_size': 5},
-                     num_filters=20)
+                     conv_params={'stride': 1, 'pad': (filter_size - 1) / 2, 'filter_size': filter_size},
+                     num_filters=20,
+                     conv_mode=conv_mode)
         relu1 = ReLU(incoming=conv1)
         pool1 = Pool(incoming=relu1,
                      pool_params={'pool_height': 2, 'pool_width': 2, 'stride': 2})
 
         conv2 = Conv(incoming=pool1,
-                     conv_params={'stride': 1, 'pad': (5 - 1) / 2, 'filter_size': 5},
-                     num_filters=50)
+                     conv_params={'stride': 1, 'pad': (filter_size - 1) / 2, 'filter_size': filter_size},
+                     num_filters=50,
+                     conv_mode=conv_mode)
         relu2 = ReLU(incoming=conv2)
         pool2 = Pool(incoming=relu2, pool_params={'pool_height': 2, 'pool_width': 2, 'stride': 2})
 
@@ -67,11 +71,11 @@ class ConvolutionalNeuralNetwork(AbstractModel):
         path_to_params = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'pretrained')
         if not os.path.exists(path_to_params):
             os.makedirs(path_to_params)
-            print("Path to pre-trained parameters not found at: {}".format(path_to_params))
+            print("Path to pre-computed parameters not found at: {}".format(path_to_params))
             raise IOError
         for layer_id, layer in enumerate(self.layers):
             if layer.params is not None:
-                print("Loading params for layer {0}".format(layer_id))
+                print("\tLoading pre-computed parameters for layer {0}".format(layer_id))
                 with open(os.path.join(path_to_params, 'layer_{0}.npy'.format(layer_id)), 'rb') as f:
                     layer.params = cPickle.load(f)
 
@@ -132,8 +136,8 @@ class ConvolutionalNeuralNetwork(AbstractModel):
                 epoch_losses.append(loss)
                 print("Minibatch train loss: {}".format(loss))
             # validate
-            val_predictions = self.predict(data['x_val'])
-            val_acc = np.sum(val_predictions == data['y_val']) / float(val_predictions.shape[0]) * 100.
+            val_predictions = self.predict(self.data['x_val'])
+            val_acc = np.sum(val_predictions == self.data['y_val']) / float(val_predictions.shape[0]) * 100.
             self.train_history['val_acc'].append(val_acc)
 
             if val_acc > best_val_acc:
@@ -160,7 +164,7 @@ class ConvolutionalNeuralNetwork(AbstractModel):
 if __name__ == "__main__":
     from utils.data_utils import load_MNIST
 
-    data = load_MNIST()
+    data_train, data_test = load_MNIST()
 
     model = ConvolutionalNeuralNetwork()
 
@@ -168,9 +172,13 @@ if __name__ == "__main__":
     # plot_filters(model.layers[1].params['W'], plot_shape=(2,10), channel=1)
     # model.fit(data, num_epochs=100)
     #
-    predictions = model.predict(data['x_test'][:1000])
+    import time
+    print("Start computing 1000")
+    start = time.time()
+    predictions = model.predict(data_test['x_test'])
+    print("Computed 1000 in {}".format(time.time() - start))
     # #
-    test_acc = np.sum(predictions == data['y_test'][:1000]) / float(predictions.shape[0]) * 100.
+    test_acc = np.sum(predictions == data_test['y_test']) / float(predictions.shape[0]) * 100.
     print("Validation accuracy: {0}"
           .format(test_acc))
     #

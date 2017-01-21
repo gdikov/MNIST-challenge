@@ -9,7 +9,7 @@ def measure_test_time(fn):
 
 if __name__ == "__main__":
     model_names = ("k-NN", )
-    model_testers = (test_logreg,)# test_logreg)#, test_convnet, test_gp)
+    model_testers = (test_convnet,)# (test_knn, test_logreg, test_convnet, test_gp)
 
     for name, test in zip(model_names, model_testers):
         print("Evaluating the {} classifier...".format(name))

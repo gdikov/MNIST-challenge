@@ -134,17 +134,17 @@ class ConvolutionalNeuralNetwork(AbstractModel):
                 self._compute_backward_pass(dscores)
                 self.train_history['train_loss'].append(loss)
                 epoch_losses.append(loss)
-                print("Minibatch train loss: {}".format(loss))
+                print("\t\tMinibatch train loss: {}".format(loss))
             # validate
             val_predictions = self.predict(self.data['x_val'])
             val_acc = np.sum(val_predictions == self.data['y_val']) / float(val_predictions.shape[0]) * 100.
             self.train_history['val_acc'].append(val_acc)
 
             if val_acc > best_val_acc:
-                print("Saving weights")
+                print("\t\tSaving weights")
                 self.save_trainable_params()
                 best_val_acc = val_acc
-            print("Epoch: {0}, mean loss: {1}, validation accuracy: {2}".format(i, np.mean(epoch_losses), val_acc))
+            print("\t\tEpoch: {0}, mean loss: {1}, validation accuracy: {2}".format(i, np.mean(epoch_losses), val_acc))
 
 
     def predict(self, new_data):

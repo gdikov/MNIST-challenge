@@ -3,11 +3,8 @@ import numpy as np
 def softmax(scores):
     """
     Computes only the softmax activation
-
-    @:param W: the weights for all classes of shape (num_classes, D)
-    @:param X: the data samples of shape (num_samples, D)
-
-    @:return probabilities for each sample of belonging to each class
+    :param scores is a NxD matrix of N scores for D classes
+    :return a NxD matrix with the probabilities for each class for each sample
     """
     log_c = -np.max(scores, axis=1)
     scores_better_numeric = np.exp((scores.T + log_c).T)
@@ -20,12 +17,6 @@ def softmax(scores):
 def softmax_loss(W, x, y, reg=0):
     """
     Computes the softmax loss function.
-
-    @:param W: the weights for all classes of shape (num_classes, D)
-    @:param X: the data samples of shape (num_samples, D)
-    @:param y: the output from the softmax of shape (num_samples, num_classes)
-
-    @:returns loss and gradient of X w.r.t W
     """
 
     num_train = x.shape[0]

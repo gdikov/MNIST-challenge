@@ -41,7 +41,7 @@ class GaussianProcesses(AbstractModel):
 
         if kernel == 'sqr_exp':
             self.hyper_params = {'sigma': 1.0,
-                                 'lambda': 0.5}
+                                 'lambda': 2.0}
             return squared_exponential
         elif kernel == 'lin':
             self.hyper_params = {'sigma': 1.0}
@@ -53,26 +53,35 @@ class GaussianProcesses(AbstractModel):
             raise NotImplementedError
 
 
-    def _build_cov_function(self):
-        print("\t\tComputing covariance function")
-        num_samples = self.data['x_train'].shape[0]
+    def _build_cov_function(self, data, _class=0):
+        if _class == -1:
+            print("\t\tComputing the extended covariance function")
+        else:
+            print("\t\tComputing covariance function for class {}".format(_class))
+        num_samples = data.shape[0]
         cov_function = np.zeros((num_samples, num_samples))
         upper_tri_ids = it.combinations(np.arange(num_samples), 2)
         # compute upper triangular submatrix and then the lower using the symmetry property
         for i, j in upper_tri_ids:
-            cov_function[i, j] = self.kernel(self.data['x_train'][i], self.data['x_train'][j])
+            cov_function[i, j] = self.kernel(data[i], data[j])
         cov_function += cov_function.T
         # compute the diagonal
         for i in xrange(num_samples):
-            cov_function[i, i] = self.kernel(self.data['x_train'][i], self.data['x_train'][i])
+            cov_function[i, i] = self.kernel(data[i], data[i])
         return cov_function
+
+
+    def _extend_cov_function(self, new_data):
+        # Compute k**
+        cov_function_new = self._build_cov_function(new_data, _class=-1)
+
 
 
     def _init_gp_functions(self):
         num_samples, dim_x, dim_y = self.data['x_train'].shape
         self.data['x_train'] = self.data['x_train'].reshape(num_samples, dim_x * dim_y)
-
-        self.cov_function = [self._build_cov_function() for _ in xrange(n_classes)]
+        # TODO: add or sample hyperparams for the kernel
+        self.cov_function = [self._build_cov_function(self.data['x_train'], _class=c) for c in xrange(n_classes)]
         self.latent_function = np.zeros((n_classes, num_samples))
         self.mean_function = np.zeros((n_classes, num_samples))
 
@@ -89,16 +98,19 @@ class GaussianProcesses(AbstractModel):
         self.data = train_data
         self._init_gp_functions()
 
-        self.estimator.approximate(self.cov_function, self.data['y_train'])
-
-
-
-
-
-
+        self.f_posterior, approx_log_marg_likelihood = self.estimator.approximate(self.cov_function,
+                                                                                  self.data['y_train'])
+        # TODO: persist the posterior latent function
+        print(approx_log_marg_likelihood)
 
 
     def predict(self, new_data):
+        num_samples, dim_x, dim_y = new_data.shape
+        new_data = new_data.reshape(num_samples, dim_x * dim_y)
+
+        # extend the covariance function
+        self._extend_cov_function(new_data)
+
         return None
 
 

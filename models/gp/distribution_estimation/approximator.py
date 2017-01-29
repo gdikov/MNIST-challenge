@@ -17,7 +17,7 @@ class LaplaceApproximation():
 
 
     def approximate(self, cov_matrix, targets):
-        one_hot_targets = OneHot(n_classes).generate_labels(targets)
+        self.one_hot_targets = OneHot(n_classes).generate_labels(targets)
 
         self.iter_counter = 0
         self.num_samples = targets.shape[0]
@@ -47,12 +47,12 @@ class LaplaceApproximation():
             b = list()
             c = list()
             for cls in xrange(n_classes):
-                # compute Pi * Pi^T * f, Note that Pi * Pi^T is symmetric -> if it slow exploit that structure!
+                # compute Pi * Pi^T * f, Note that Pi * Pi^T is symmetric -> possible optimization!
                 PiPif_cls = np.zeros(self.num_samples)
                 for all_other_cls in xrange(n_classes):
                     PiPif_cls += pi[cls] * pi[all_other_cls] * f[all_other_cls]
                 # b = (D - Pi * Pi^T) * f + y - pi
-                b_cls = pi[cls] * f[cls] - PiPif_cls + one_hot_targets[:, cls] - pi[cls]
+                b_cls = pi[cls] * f[cls] - PiPif_cls + self.one_hot_targets[:, cls] - pi[cls]
                 # c = E * K * b
                 c_cls = E[cls].dot((cov_matrix[cls].dot(b_cls)))
                 b.append(b_cls)
@@ -67,9 +67,8 @@ class LaplaceApproximation():
                 f[cls] = cov_matrix[cls].dot(a[cls])
 
         approx_log_marg_likelihood = -0.5 * a.ravel().dot(f.ravel()) + \
-                                     one_hot_targets.ravel().dot(f.ravel()) + \
+                                     self.one_hot_targets.ravel().dot(f.ravel()) - \
                                      np.sum(np.log(np.sum(np.exp(f), axis=1))) - np.sum(z)
-        tmp = np.sum(f, axis=1)
         print("\t\tMode-finding completed after {} iterations".format(self.iter_counter+1))
         return f, approx_log_marg_likelihood
 
@@ -86,9 +85,9 @@ class LaplaceApproximation():
         return True
 
 
-    def compute_latent_mean_cov(self, cov_matrix, f_posterior):
+    def compute_latent_mean_cov(self, cov_matrix_train, cov_matrix_test, f_posterior):
+        num_test_samples = cov_matrix_test['hetero'][0].shape[0]
         # for more details see Algorithm 3.4, p51 from Rasmussen's Gaussian Processes
-
         pi = softmax(f_posterior)
         E = list()
         z = list()
@@ -96,7 +95,7 @@ class LaplaceApproximation():
             # compute pi and use it as Pi too
             pi_c = np.sqrt(pi[cls])
             # cholesky(I + D_c^(1/2) * K * D_c^(1/2))
-            L = spl.cholesky(spm.identity(self.num_samples) + (cov_matrix[cls].T * (pi_c ** 2)).T)
+            L = spl.cholesky(spm.identity(self.num_samples) + (cov_matrix_train[cls].T * (pi_c ** 2)).T)
             # E_c = D_c^(1/2) * L^T \ (L \ D_c^(1/2))
             E.append((spsl.spsolve(spm.csc_matrix((L * pi_c).T),
                                    spsl.spsolve(spm.csc_matrix(L),
@@ -104,32 +103,15 @@ class LaplaceApproximation():
         E = np.asarray(E)
         # M = cholesky(sum_c E_c)
         M = spl.cholesky(np.sum(E, axis=0))
-        b = list()
-        c = list()
+        latent_means = np.zeros((num_test_samples, n_classes))
+        latent_covs = np.zeros((num_test_samples, n_classes, n_classes))
         for cls in xrange(n_classes):
-            latent_mean =
-            # compute Pi * Pi^T * f, Note that Pi * Pi^T is symmetric -> if it slow exploit that structure!
-            PiPif_cls = np.zeros(self.num_samples)
-            for all_other_cls in xrange(n_classes):
-                PiPif_cls += pi[cls] * pi[all_other_cls] * f[all_other_cls]
-            # b = (D - Pi * Pi^T) * f + y - pi
-            b_cls = pi[cls] * f[cls] - PiPif_cls + one_hot_targets[:, cls] - pi[cls]
-            # c = E * K * b
-            c_cls = E[cls].dot((cov_matrix[cls].dot(b_cls)))
-            b.append(b_cls)
-            c.append(c_cls)
-        c = np.asarray(c)
-        b = np.asarray(b)
-        # a = b - c + E * R * M^T \ (M \ (R^T * c))
-        a = (b.ravel() - c.ravel() + spl.lstsq(E.reshape(n_classes * self.num_samples, self.num_samples).dot(M.T).T,
-                                               spl.solve(M, np.sum(c, axis=0)))[0]).reshape((n_classes, -1))
-        # f = K * a
-        for cls in xrange(n_classes):
-            f[cls] = cov_matrix[cls].dot(a[cls])
+            latent_means[:, cls] = cov_matrix_test['hetero'][cls].dot(self.one_hot_targets[:, cls] - pi[cls])
+            b = cov_matrix_test['hetero'][cls].dot(E[cls].T)
+            c = E[cls].dot(spl.solve(M.T, spl.solve(M, b.T)))
+            for cls_hat in xrange(n_classes):
+                latent_covs[:, cls, cls_hat] = np.einsum('ij,ij->i', cov_matrix_test['hetero'][cls_hat], c.T)
+            latent_covs[:, cls, cls] += cov_matrix_test['auto'][cls] - \
+                                        np.einsum('ij,ij->i', cov_matrix_test['hetero'][cls], b)
 
-        approx_log_marg_likelihood = -0.5 * a.ravel().dot(f.ravel()) + \
-                                     one_hot_targets.ravel().dot(f.ravel()) + \
-                                     np.sum(np.log(np.sum(np.exp(f), axis=1))) - np.sum(z)
-        tmp = np.sum(f, axis=1)
-        print("\t\tMode-finding completed after {} iterations".format(self.iter_counter + 1))
-        return f, approx_log_marg_likelihood
+        return latent_means, latent_covs

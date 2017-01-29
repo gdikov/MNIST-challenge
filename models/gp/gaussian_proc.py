@@ -53,28 +53,29 @@ class GaussianProcesses(AbstractModel):
             raise NotImplementedError
 
 
-    def _build_cov_function(self, data, _class=0):
+    def _build_cov_function(self, data=None, _class=0):
         if _class == -1:
             print("\t\tComputing the extended covariance function")
+            num_train_samples = self.data['x_train'].shape[0]
+            num_samples_new = data.shape[0]
+            cov_function = np.zeros((num_samples_new, num_train_samples))
+            for i in xrange(num_samples_new):
+                for j in xrange(num_train_samples):
+                    cov_function[i, j] = self.kernel(data[i], self.data['x_train'][j])
+            return cov_function
         else:
             print("\t\tComputing covariance function for class {}".format(_class))
-        num_samples = data.shape[0]
-        cov_function = np.zeros((num_samples, num_samples))
-        upper_tri_ids = it.combinations(np.arange(num_samples), 2)
-        # compute upper triangular submatrix and then the lower using the symmetry property
-        for i, j in upper_tri_ids:
-            cov_function[i, j] = self.kernel(data[i], data[j])
-        cov_function += cov_function.T
-        # compute the diagonal
-        for i in xrange(num_samples):
-            cov_function[i, i] = self.kernel(data[i], data[i])
-        return cov_function
-
-
-    def _extend_cov_function(self, new_data):
-        # Compute k**
-        cov_function_new = self._build_cov_function(new_data, _class=-1)
-
+            num_samples = data.shape[0]
+            cov_function = np.zeros((num_samples, num_samples))
+            upper_tri_ids = it.combinations(np.arange(num_samples), 2)
+            # compute upper triangular submatrix and then the lower using the symmetry property
+            for i, j in upper_tri_ids:
+                cov_function[i, j] = self.kernel(data[i], data[j])
+            cov_function += cov_function.T
+            # compute the diagonal
+            for i in xrange(num_samples):
+                cov_function[i, i] = self.kernel(data[i], data[i])
+            return cov_function
 
 
     def _init_gp_functions(self):
@@ -109,7 +110,16 @@ class GaussianProcesses(AbstractModel):
         new_data = new_data.reshape(num_samples, dim_x * dim_y)
 
         # extend the covariance function
-        self._extend_cov_function(new_data)
+        cov_function_new_hetero = [self._build_cov_function(new_data, _class=-1)
+                                   for _ in xrange(n_classes)]
+        cov_function_new_auto = [np.array([self.kernel(new_data[i], new_data[i])
+                                                    for i in xrange(num_samples)])
+                                 for _ in xrange(n_classes)]
+        cov_function_test = {'auto': cov_function_new_auto,
+                             'hetero': cov_function_new_hetero}
+        self.estimator.compute_latent_mean_cov(cov_matrix_train=self.cov_function,
+                                               cov_matrix_test=cov_function_test,
+                                               f_posterior=self.f_posterior)
 
         return None
 
@@ -117,13 +127,13 @@ class GaussianProcesses(AbstractModel):
 if __name__ == "__main__":
     from utils.data_utils import load_MNIST
 
-    data_train, data_test = load_MNIST(num_training=10, num_validation=0)
+    data_train, data_test = load_MNIST(num_training=12, num_validation=5)
 
     model = GaussianProcesses()
 
     model.fit(data_train)
 
-    # predictions = model.predict(data_train['x_val'])
+    predictions = model.predict(data_train['x_val'])
     #
     # test_acc = np.sum(predictions == data_train['y_val']) / float(predictions.shape[0]) * 100.
     # print("Validation accuracy: {0}"

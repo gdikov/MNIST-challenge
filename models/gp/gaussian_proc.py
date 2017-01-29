@@ -1,14 +1,13 @@
 import numpy as np
-import scipy as sp
-import scipy.sparse as spm
-import scipy.linalg as spl
 import itertools as it
 
 from models.model import AbstractModel
 
 from distribution_estimation.approximator import LaplaceApproximation
+from distribution_estimation.sampler import MonteCarlo
 
 n_classes = 10
+
 
 class GaussianProcesses(AbstractModel):
     def __init__(self, kernel='sqr_exp', distribution_estimation='analytic'):
@@ -23,13 +22,13 @@ class GaussianProcesses(AbstractModel):
         else:
             # TODO: try with a sampling procedure
             raise NotImplementedError
-
+        self.sampler = MonteCarlo(num_sampling_steps=10000)
 
     def _build_kernel(self, kernel='sqr_exp'):
         def squared_exponential(x_i, x_j):
             d = x_i - x_j
             res = (self.hyper_params['sigma'] ** 2) * \
-                   np.exp(-0.5 * np.dot(d.T, d) / self.hyper_params['lambda'])
+                  np.exp(-0.5 * np.dot(d.T, d) / self.hyper_params['lambda'])
             return res
 
         def linear(x_i, x_j):
@@ -40,8 +39,8 @@ class GaussianProcesses(AbstractModel):
             return np.exp(-2.0 * np.dot(d.T, d) / (self.hyper_params['lambda']) ** 2)
 
         if kernel == 'sqr_exp':
-            self.hyper_params = {'sigma': 1.0,
-                                 'lambda': 2.0}
+            self.hyper_params = {'sigma': 1.16,
+                                 'lambda': 3.14}
             return squared_exponential
         elif kernel == 'lin':
             self.hyper_params = {'sigma': 1.0}
@@ -51,7 +50,6 @@ class GaussianProcesses(AbstractModel):
             return periodic
         else:
             raise NotImplementedError
-
 
     def _build_cov_function(self, data=None, _class=0):
         if _class == -1:
@@ -77,7 +75,6 @@ class GaussianProcesses(AbstractModel):
                 cov_function[i, i] = self.kernel(data[i], data[i])
             return cov_function
 
-
     def _init_gp_functions(self):
         num_samples, dim_x, dim_y = self.data['x_train'].shape
         self.data['x_train'] = self.data['x_train'].reshape(num_samples, dim_x * dim_y)
@@ -85,7 +82,6 @@ class GaussianProcesses(AbstractModel):
         self.cov_function = [self._build_cov_function(self.data['x_train'], _class=c) for c in xrange(n_classes)]
         self.latent_function = np.zeros((n_classes, num_samples))
         self.mean_function = np.zeros((n_classes, num_samples))
-
 
     def fit(self, train_data, **kwargs):
         """
@@ -102,8 +98,7 @@ class GaussianProcesses(AbstractModel):
         self.f_posterior, approx_log_marg_likelihood = self.estimator.approximate(self.cov_function,
                                                                                   self.data['y_train'])
         # TODO: persist the posterior latent function
-        print(approx_log_marg_likelihood)
-
+        # print(approx_log_marg_likelihood)
 
     def predict(self, new_data):
         num_samples, dim_x, dim_y = new_data.shape
@@ -113,28 +108,29 @@ class GaussianProcesses(AbstractModel):
         cov_function_new_hetero = [self._build_cov_function(new_data, _class=-1)
                                    for _ in xrange(n_classes)]
         cov_function_new_auto = [np.array([self.kernel(new_data[i], new_data[i])
-                                                    for i in xrange(num_samples)])
+                                           for i in xrange(num_samples)])
                                  for _ in xrange(n_classes)]
         cov_function_test = {'auto': cov_function_new_auto,
                              'hetero': cov_function_new_hetero}
-        self.estimator.compute_latent_mean_cov(cov_matrix_train=self.cov_function,
-                                               cov_matrix_test=cov_function_test,
-                                               f_posterior=self.f_posterior)
+        latent_mean, latent_cov = self.estimator.compute_latent_mean_cov(cov_matrix_train=self.cov_function,
+                                                                         cov_matrix_test=cov_function_test,
+                                                                         f_posterior=self.f_posterior)
 
-        return None
+        predicted_class_probs = self.sampler.sample(latent_mean=latent_mean, latent_cov=latent_cov)
+        return np.argmax(predicted_class_probs, axis=1)
 
 
 if __name__ == "__main__":
     from utils.data_utils import load_MNIST
 
-    data_train, data_test = load_MNIST(num_training=12, num_validation=5)
+    data_train, data_test = load_MNIST(num_training=100, num_validation=50)
 
     model = GaussianProcesses()
 
     model.fit(data_train)
 
     predictions = model.predict(data_train['x_val'])
-    #
-    # test_acc = np.sum(predictions == data_train['y_val']) / float(predictions.shape[0]) * 100.
-    # print("Validation accuracy: {0}"
-    #       .format(test_acc))
+
+    test_acc = np.sum(predictions == data_train['y_val']) / float(predictions.shape[0]) * 100.
+    print("Validation accuracy: {0}"
+          .format(test_acc))

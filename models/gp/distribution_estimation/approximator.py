@@ -11,7 +11,7 @@ n_classes = 10
 class LaplaceApproximation():
     def __init__(self):
         self.step_size = 1e-2
-        self.max_iter = 1000
+        self.max_iter = 20
         self.epsilon = 1e-8
         self.old_value = np.inf
 
@@ -75,6 +75,7 @@ class LaplaceApproximation():
 
     def _is_converged(self, f):
         if self.iter_counter < self.max_iter:
+            print("\t\tIteration {}, {}".format(self.iter_counter, spl.norm(f)))
             self.iter_counter += 1
             # TODO: check the magnitude of the gradient or if the objective has increased in value
             if np.fabs(spl.norm(f) - self.old_value) < self.epsilon:
@@ -82,6 +83,7 @@ class LaplaceApproximation():
                 return True
             self.old_value = spl.norm(f)
             return False
+        print("\t\tNewton iterations are not converging and max iteration count has been attained")
         return True
 
 

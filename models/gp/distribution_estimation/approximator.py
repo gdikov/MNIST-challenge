@@ -12,11 +12,12 @@ class LaplaceApproximation():
     def __init__(self):
         self.step_size = 1e-2
         self.max_iter = 20
-        self.epsilon = 1e-8
+        self.epsilon = 1e-5
         self.old_value = np.inf
 
 
     def approximate(self, cov_matrix, targets):
+        print("\t\tComputing the Laplace approximation with Newton iterations")
         self.one_hot_targets = OneHot(n_classes).generate_labels(targets)
 
         self.iter_counter = 0
@@ -34,7 +35,8 @@ class LaplaceApproximation():
                 # compute pi and use it as Pi too
                 pi_c = np.sqrt(pi[cls])
                 # cholesky(I + D_c^(1/2) * K * D_c^(1/2))
-                L = spl.cholesky(spm.identity(self.num_samples) + (cov_matrix[cls].T * (pi_c**2)).T)
+                L = spl.cholesky((spm.identity(self.num_samples) +
+                                 spm.diags(pi_c).dot(spm.csc_matrix(cov_matrix[cls]).dot(spm.diags(pi_c)))).toarray())
                 # E_c = D_c^(1/2) * L^T \ (L \ D_c^(1/2))
                 E.append((spsl.spsolve(spm.csc_matrix((L * pi_c).T),
                                        spsl.spsolve(spm.csc_matrix(L),
@@ -69,13 +71,12 @@ class LaplaceApproximation():
         approx_log_marg_likelihood = -0.5 * a.ravel().dot(f.ravel()) + \
                                      self.one_hot_targets.ravel().dot(f.ravel()) - \
                                      np.sum(np.log(np.sum(np.exp(f), axis=1))) - np.sum(z)
-        print("\t\tMode-finding completed after {} iterations".format(self.iter_counter+1))
         return f, approx_log_marg_likelihood
 
 
     def _is_converged(self, f):
         if self.iter_counter < self.max_iter:
-            print("\t\tIteration {}, {}".format(self.iter_counter, spl.norm(f)))
+            print("\t\t\tIteration {}: ||f|| = {}".format(self.iter_counter+1, spl.norm(f)))
             self.iter_counter += 1
             # TODO: check the magnitude of the gradient or if the objective has increased in value
             if np.fabs(spl.norm(f) - self.old_value) < self.epsilon:
@@ -88,6 +89,7 @@ class LaplaceApproximation():
 
 
     def compute_latent_mean_cov(self, cov_matrix_train, cov_matrix_test, f_posterior):
+        print("\t\tComputing latent mean and covariance")
         num_test_samples = cov_matrix_test['hetero'][0].shape[0]
         # for more details see Algorithm 3.4, p51 from Rasmussen's Gaussian Processes
         pi = softmax(f_posterior)
@@ -97,7 +99,9 @@ class LaplaceApproximation():
             # compute pi and use it as Pi too
             pi_c = np.sqrt(pi[cls])
             # cholesky(I + D_c^(1/2) * K * D_c^(1/2))
-            L = spl.cholesky(spm.identity(self.num_samples) + (cov_matrix_train[cls].T * (pi_c ** 2)).T)
+            L = spl.cholesky((spm.identity(self.num_samples) +
+                              spm.diags(pi_c).dot(spm.csc_matrix(cov_matrix_train[cls]).dot(spm.diags(pi_c))))
+                             .toarray())
             # E_c = D_c^(1/2) * L^T \ (L \ D_c^(1/2))
             E.append((spsl.spsolve(spm.csc_matrix((L * pi_c).T),
                                    spsl.spsolve(spm.csc_matrix(L),

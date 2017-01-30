@@ -17,7 +17,7 @@ class MonteCarlo(AbstractSampler):
     def sample(self, latent_mean, latent_cov):
         num_samples = latent_mean.shape[0]
         pi_star = np.zeros((num_samples, n_classes))
-
+        print("\t\tPerforming MCMC sampling from the posterior latent function")
         for k in xrange(num_samples):
             f_sampled = np.random.multivariate_normal(mean=latent_mean[k], cov=latent_cov[k], size=self.sampling_steps)
             # class posterior is a softmax

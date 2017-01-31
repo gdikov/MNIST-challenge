@@ -25,6 +25,7 @@ class GaussianProcesses(AbstractModel):
             raise NotImplementedError
         self.sampler = MonteCarlo(num_sampling_steps=100)
         self.optimiser = HyperParameterOptimiser()
+        self.num_restarts_fitting = 1
 
     def _build_kernel(self, kernel='sqr_exp'):
         def squared_exponential(x_i, x_j, cls):
@@ -41,8 +42,8 @@ class GaussianProcesses(AbstractModel):
             return np.exp(-2.0 * np.dot(d.T, d) / (self.hyper_params['lambda'][cls]) ** 2)
 
         if kernel == 'sqr_exp':
-            self.hyper_params = {'sigma': np.random.uniform(0.7, 1.3, size=n_classes),
-                                 'lambda': np.random.uniform(0.7, 1.3, size=n_classes)}
+            self.hyper_params = {'sigma': np.random.uniform(1.0, 1.0, size=n_classes),
+                                 'lambda': np.random.uniform(16.3, 16.4, size=n_classes)}
             return squared_exponential
         elif kernel == 'lin':
             self.hyper_params = {'sigma': np.random.uniform(0.7, 1.3, size=n_classes)}
@@ -86,13 +87,25 @@ class GaussianProcesses(AbstractModel):
 
         return cov_function
 
-    def _init_gp_functions(self):
-        num_samples, dim_x, dim_y = self.data['x_train'].shape
-        self.data['x_train'] = self.data['x_train'].reshape(num_samples, dim_x * dim_y)
-        # TODO: add or sample hyperparams for the kernel
-        self.cov_function = self._build_cov_function(self.data['x_train'], mode='symm')
-        self.latent_function = np.zeros((n_classes, num_samples))
-        self.mean_function = np.zeros((n_classes, num_samples))
+
+    def _recompute_mean_cov(self, hyper_params):
+        self.hyper_params = hyper_params
+
+
+    def _set_gp_functions(self, latent_init=None, cov_init=None, mean_init=None):
+        if cov_init is None:
+            self.cov_function = self._build_cov_function(self.data['x_train'], mode='symm')
+        else:
+            self.cov_function = cov_init
+        if latent_init is None:
+            self.latent_function = np.zeros((n_classes, self.num_samples))
+        else:
+            self.latent_function = latent_init
+        if mean_init is None:
+            self.mean_function = np.zeros((n_classes, self.num_samples))
+        else:
+            self.mean_function = mean_init
+
 
     def fit(self, train_data, **kwargs):
         """
@@ -104,26 +117,37 @@ class GaussianProcesses(AbstractModel):
         :return:
         """
         self.data = train_data
-        self._init_gp_functions()
 
-        self.f_posterior, approx_log_marg_likelihood = self.estimator.approximate(self.cov_function,
-                                                                                  self.data['y_train'])
-        # TODO: persist the posterior latent function
-        # print(approx_log_marg_likelihood)
-        # TODO: implement partial derivative computation for the hyperparametes
-        # see Algorithm. 5.1, p.126 in Rasmussen
-        # self.optimiser.compute_partial_derivatives(self.f_posterior)
+        self.num_samples, dim_x, dim_y = self.data['x_train'].shape
+        self.data['x_train'] = self.data['x_train'].reshape(self.num_samples, dim_x * dim_y)
+
+        self._set_gp_functions()
+
+        for i in xrange(self.num_restarts_fitting):
+
+            f_posterior, approx_log_marg_likelihood = self.estimator.approximate(self.cov_function,
+                                                                                 self.data['y_train'],
+                                                                                 latent_init=self.latent_function)
+            # TODO: persist the posterior latent function if an improvement is observed
+            # better_hypers = self.optimiser.optimise_hyper_params(f_posterior)
+            # cov_posterior, mean_posterior = self._recompute_mean_cov(better_hypers)
+            # self._set_gp_functions(latent_init=f_posterior, cov_init=cov_posterior, mean_init=mean_posterior)
+        self.latent_function = f_posterior
+
 
     def predict(self, new_data):
-        num_samples, dim_x, dim_y = new_data.shape
-        new_data = new_data.reshape(num_samples, dim_x * dim_y)
+        if len(new_data.shape) == 3:
+            num_samples, dim_x, dim_y = new_data.shape
+            new_data = new_data.reshape(num_samples, dim_x * dim_y)
+        else:
+            num_samples = new_data.shape[0]
 
         # extend the covariance function
         cov_function_test = {'auto': self._build_cov_function(new_data, mode='auto'),
                              'hetero': self._build_cov_function(new_data, mode='hetero')}
         latent_mean, latent_cov = self.estimator.compute_latent_mean_cov(cov_matrix_train=self.cov_function,
                                                                          cov_matrix_test=cov_function_test,
-                                                                         f_posterior=self.f_posterior)
+                                                                         f_posterior=self.latent_function)
 
         predicted_class_probs = self.sampler.sample(latent_mean=latent_mean, latent_cov=latent_cov)
         return np.argmax(predicted_class_probs, axis=1)
@@ -132,7 +156,7 @@ class GaussianProcesses(AbstractModel):
 if __name__ == "__main__":
     from utils.data_utils import load_MNIST
 
-    data_train, data_test = load_MNIST(num_training=500, num_validation=100)
+    data_train, data_test = load_MNIST(num_training=100, num_validation=100)
 
     model = GaussianProcesses()
 

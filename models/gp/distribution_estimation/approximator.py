@@ -16,7 +16,7 @@ class LaplaceApproximation():
         self.old_value = np.inf
 
 
-    def approximate(self, cov_matrix, targets):
+    def approximate(self, cov_matrix, targets, latent_init):
         print("\t\tComputing the Laplace approximation with Newton iterations")
         self.one_hot_targets = OneHot(n_classes).generate_labels(targets)
 
@@ -24,7 +24,7 @@ class LaplaceApproximation():
         self.num_samples = targets.shape[0]
 
         # initialise the temporary result storage variables and the latent function
-        f = np.zeros((n_classes, self.num_samples))
+        f = latent_init.copy()
 
         # for more details see Algorithm 3.3, p50 from Rasmussen's Gaussian Processes
         while(not self._is_converged(f)):
@@ -33,28 +33,27 @@ class LaplaceApproximation():
             z = list()
             for cls in xrange(n_classes):
                 # compute pi and use it as Pi too
-                pi_c = np.sqrt(pi[cls])
+                pi_c = spm.diags(np.sqrt(pi[cls]), format='csc')
                 # cholesky(I + D_c^(1/2) * K * D_c^(1/2))
                 L = spl.cholesky((spm.identity(self.num_samples) +
-                                 spm.diags(pi_c).dot(spm.csc_matrix(cov_matrix[cls]).dot(spm.diags(pi_c)))).toarray())
+                                 pi_c.dot(spm.csc_matrix(cov_matrix[cls]).dot(pi_c))).toarray(), lower=True)
                 # E_c = D_c^(1/2) * L^T \ (L \ D_c^(1/2))
-                E.append((spsl.spsolve(spm.csc_matrix((L * pi_c).T),
-                                       spsl.spsolve(spm.csc_matrix(L),
-                                                    spm.diags(pi_c, format='csc')))).toarray())
+                E.append((pi_c.dot(spsl.spsolve(spm.csc_matrix(L.T), spsl.spsolve(spm.csc_matrix(L), pi_c))))
+                         .toarray())
                 # z_c = sum_i log(L_ii)
-                z.append(np.log(np.prod(np.diagonal(L))))
+                z.append(np.sum(np.log(np.diagonal(L))))
             E = np.asarray(E)
             # M = cholesky(sum_c E_c)
-            M = spl.cholesky(np.sum(E, axis=0))
+            M = spl.cholesky(np.sum(E, axis=0), lower=True)
             b = list()
             c = list()
             for cls in xrange(n_classes):
                 # compute Pi * Pi^T * f, Note that Pi * Pi^T is symmetric -> possible optimization!
-                PiPif_cls = np.zeros(self.num_samples)
-                for all_other_cls in xrange(n_classes):
-                    PiPif_cls += pi[cls] * pi[all_other_cls] * f[all_other_cls]
+                PiPiTf_cls = np.zeros(self.num_samples)
+                for cls_prime in xrange(n_classes):
+                    PiPiTf_cls += pi[cls] * pi[cls_prime] * f[cls_prime]
                 # b = (D - Pi * Pi^T) * f + y - pi
-                b_cls = pi[cls] * f[cls] - PiPif_cls + self.one_hot_targets[:, cls] - pi[cls]
+                b_cls = pi[cls] * f[cls] - PiPiTf_cls + self.one_hot_targets[:, cls] - pi[cls]
                 # c = E * K * b
                 c_cls = E[cls].dot((cov_matrix[cls].dot(b_cls)))
                 b.append(b_cls)
@@ -62,15 +61,17 @@ class LaplaceApproximation():
             c = np.asarray(c)
             b = np.asarray(b)
             # a = b - c + E * R * M^T \ (M \ (R^T * c))
-            a = (b.ravel() - c.ravel() + spl.lstsq(E.reshape(n_classes*self.num_samples, self.num_samples).dot(M.T).T,
-                                                   spl.solve(M, np.sum(c, axis=0)))[0]).reshape((n_classes, -1))
+            a = (b.ravel() - c.ravel() + np.vstack(E).dot(spl.solve(M.T, spl.solve(M, np.sum(c, axis=0)))))\
+                .reshape((n_classes, -1))
             # f = K * a
             for cls in xrange(n_classes):
                 f[cls] = cov_matrix[cls].dot(a[cls])
 
-        approx_log_marg_likelihood = -0.5 * a.ravel().dot(f.ravel()) + \
-                                     self.one_hot_targets.ravel().dot(f.ravel()) - \
-                                     np.sum(np.log(np.sum(np.exp(f), axis=1))) - np.sum(z)
+            approx_log_marg_likelihood = -0.5 * a.ravel().dot(f.ravel()) \
+                                         + self.one_hot_targets.T.ravel().dot(f.ravel()) \
+                                         - np.sum(np.log(np.sum(np.exp(f), axis=0))) - np.sum(z)
+            print(approx_log_marg_likelihood, -0.5 * a.ravel().dot(f.ravel()), self.one_hot_targets.T.ravel().dot(f.ravel())
+                  - np.sum(np.log(np.sum(np.exp(f), axis=0))), np.sum(z))
         return f, approx_log_marg_likelihood
 
 
@@ -78,7 +79,7 @@ class LaplaceApproximation():
         if self.iter_counter < self.max_iter:
             print("\t\t\tIteration {}: ||f|| = {}".format(self.iter_counter+1, spl.norm(f)))
             self.iter_counter += 1
-            # TODO: check the magnitude of the gradient or if the objective has increased in value
+            # check the magnitude of the posterior or if the objective has increased in value
             if np.fabs(spl.norm(f) - self.old_value) < self.epsilon:
                 self.old_value = np.inf
                 return True

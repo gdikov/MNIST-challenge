@@ -31,3 +31,8 @@ def softmax_loss(W, x, y, reg=0):
     dW += reg * W
 
     return loss, dW
+
+
+def logistic(scores):
+    probabilities = 1.0 / (1.0 + np.exp(-scores))
+    return probabilities

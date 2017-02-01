@@ -6,5 +6,5 @@ class AbstractModel(object):
     def fit(self, train_data, **kwargs):
         pass
 
-    def predict(self, new_data):
+    def predict(self, new_data, **kwargs):
         return None

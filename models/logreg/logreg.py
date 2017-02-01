@@ -92,7 +92,7 @@ class LogisticRegression(AbstractModel):
             yield x
 
 
-    def predict(self, new_data):
+    def predict(self, new_data, **kwargs):
         # make sure the new_data is shaped like the train data
         if new_data.shape[1] != 28 * 28 + 1 and new_data.shape[1] != 28 * 28:
             new_data = new_data.reshape(new_data.shape[0], 28*28)

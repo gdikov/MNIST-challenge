@@ -147,7 +147,7 @@ class ConvolutionalNeuralNetwork(AbstractModel):
             print("\t\tEpoch: {0}, mean loss: {1}, validation accuracy: {2}".format(i, np.mean(epoch_losses), val_acc))
 
 
-    def predict(self, new_data):
+    def predict(self, new_data, **kwargs):
         # reshape the input so that a channel dimension is added
         # reshape the images into row vectors of 28*28 elements
         num_samples, dim_x, dim_y = new_data.shape

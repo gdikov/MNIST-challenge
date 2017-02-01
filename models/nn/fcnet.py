@@ -114,7 +114,7 @@ class BasicNeuralNetwork(AbstractModel):
             print("Epoch: {0}, loss: {1}".format(i, mean_loss))
 
 
-    def predict(self, new_data):
+    def predict(self, new_data, **kwargs):
         # reshape the input so that a channel dimension is added
         # reshape the images into row vectors of 28*28 elements
         num_samples, dim_x, dim_y = new_data.shape

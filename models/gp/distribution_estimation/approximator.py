@@ -12,14 +12,13 @@ n_classes = 10
 
 class LaplaceApproximation(object):
     def __init__(self):
-        self.step_size = 1e-2
         self.max_iter = 20
         self.epsilon = 1e-5
         self.old_value = np.inf
 
 
     def approximate_binary(self, cov_matrix, targets, latent_init, cls):
-        print("\t\tComputing the Laplace approximation with Newton iterations")
+        print("\t\tComputing the Laplace approximation with Newton iterations for class {}".format(cls))
         self.binary_targets = BinaryLabels(class_one=cls).generate_labels(targets)
 
         self.iter_counter = 0
@@ -107,12 +106,14 @@ class LaplaceApproximation(object):
             z = list()
             for cls in xrange(n_classes):
                 # compute pi and use it as Pi too
-                pi_c = spm.diags(np.sqrt(pi[cls]), format='csc')
+                pi_sqrt_cls = spm.diags(np.sqrt(pi[cls]), format='csc')
                 # cholesky(I + D_c^(1/2) * K * D_c^(1/2))
                 L = spl.cholesky((spm.identity(self.num_samples) +
-                                  pi_c.dot(spm.csc_matrix(cov_matrix[cls]).dot(pi_c))).toarray(), lower=True)
+                                  pi_sqrt_cls.dot(spm.csc_matrix(cov_matrix[cls]).dot(pi_sqrt_cls))).toarray(),
+                                 lower=True)
                 # E_c = D_c^(1/2) * L^T \ (L \ D_c^(1/2))
-                E.append((pi_c.dot(spsl.spsolve(spm.csc_matrix(L.T), spsl.spsolve(spm.csc_matrix(L), pi_c))))
+                E.append((pi_sqrt_cls.dot(spsl.spsolve(spm.csc_matrix(L.T), spsl.spsolve(spm.csc_matrix(L),
+                                                                                         pi_sqrt_cls))))
                          .toarray())
                 # z_c = sum_i log(L_ii)
                 z.append(np.sum(np.log(np.diagonal(L))))
@@ -171,15 +172,15 @@ class LaplaceApproximation(object):
         z = list()
         for cls in xrange(n_classes):
             # compute pi and use it as Pi too
-            pi_c = np.sqrt(pi[cls])
+            pi_sqrt_cls = spm.diags(np.sqrt(pi[cls]), format='csc')
             # cholesky(I + D_c^(1/2) * K * D_c^(1/2))
             L = spl.cholesky((spm.identity(self.num_samples) +
-                              spm.diags(pi_c).dot(spm.csc_matrix(cov_matrix_train[cls]).dot(spm.diags(pi_c))))
+                              pi_sqrt_cls.dot(spm.csc_matrix(cov_matrix_train[cls]).dot(pi_sqrt_cls)))
                              .toarray(), lower=True)
             # E_c = D_c^(1/2) * L^T \ (L \ D_c^(1/2))
-            E.append((spsl.spsolve(spm.csc_matrix((L * pi_c).T),
-                                   spsl.spsolve(spm.csc_matrix(L),
-                                                spm.diags(pi_c, format='csc')))).toarray())
+            E.append((pi_sqrt_cls.dot(spsl.spsolve(spm.csc_matrix(L.T), spsl.spsolve(spm.csc_matrix(L),
+                                                                                     pi_sqrt_cls))))
+                     .toarray())
         E = np.asarray(E)
         # M = cholesky(sum_c E_c)
         M = spl.cholesky(np.sum(E, axis=0), lower=True)
@@ -187,11 +188,10 @@ class LaplaceApproximation(object):
         latent_covs = np.zeros((num_test_samples, n_classes, n_classes))
         for cls in xrange(n_classes):
             latent_means[:, cls] = cov_matrix_test['hetero'][cls].dot(self.one_hot_targets[:, cls] - pi[cls])
-            b = cov_matrix_test['hetero'][cls].dot(E[cls].T)
-            c = E[cls].dot(spl.solve(M.T, spl.solve(M, b.T)))
+            b = E[cls].dot(cov_matrix_test['hetero'][cls].T)
+            c = E[cls].dot(spl.solve(M.T, spl.solve(M, b)))
             for cls_hat in xrange(n_classes):
                 latent_covs[:, cls, cls_hat] = np.einsum('ij,ij->i', cov_matrix_test['hetero'][cls_hat], c.T)
             latent_covs[:, cls, cls] += cov_matrix_test['auto'][cls] - \
-                                        np.einsum('ij,ij->i', cov_matrix_test['hetero'][cls], b)
-
+                                        np.einsum('ij,ij->i', cov_matrix_test['hetero'][cls], b.T)
         return latent_means, latent_covs

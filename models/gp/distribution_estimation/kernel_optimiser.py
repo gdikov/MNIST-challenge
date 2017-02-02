@@ -34,7 +34,6 @@ class HyperParameterOptimiser(object):
                                                                                                 a, targets, hypers, cls)
         new_hypers = {'sigma': np.max((hypers['sigma'] + 0.01*delta_sigma, np.array([0.5])), axis=0),
                       'lambda': np.max((hypers['lambda'] + 0.01*delta_lambda, np.array([0.5])), axis=0)}
-        print("class {} new: {}".format(cls, new_hypers))
         return new_hypers
 
 
@@ -72,7 +71,6 @@ class HyperParameterOptimiser(object):
         b = derivative_matrix_lambda.dot(binary_targets - pi)
         s_3 = b - cov_matrix.dot(R.dot(b))
         delta_lambda = s_1 + s_2.dot(s_3)
-        print("apprx: {}".format(approx_log_marg_likelihood))
         return approx_log_marg_likelihood, delta_sigma, delta_lambda
 
 

@@ -19,7 +19,7 @@ class kNearestNeighbours(AbstractModel):
         self.data['x_train'] = self.data['x_train'].reshape(num_samples, dim_x * dim_y)
 
 
-    def predict(self, new_data, k=1):
+    def predict(self, new_data, **kwargs):
         """
         Compute  a matrix of distances between unseen test data samples and the known training samples.
         Then predict a label for each test sample.
@@ -28,8 +28,9 @@ class kNearestNeighbours(AbstractModel):
         @:param k: the number of the neighbours to vote for the label
 
         @:return: the predicted labels for the unseen data samples
+        :param **kwargs:
         """
-
+        k = kwargs.get('k', 1)
         # make sure the new_data is shaped like the train data
         if new_data.shape[1] != self.data['x_train'].shape[1]:
             new_data = new_data.reshape(new_data.shape[0], self.data['x_train'].shape[1])

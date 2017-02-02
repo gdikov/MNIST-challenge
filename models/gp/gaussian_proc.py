@@ -191,7 +191,7 @@ class MulticlassGaussianProcess(GaussianProcess):
             self.latent_function = f_posterior
         elif self.classification_mode == 'mixed_binary':
             self.binary_gps = list()
-            for cls in range(1, 2):
+            for cls in range(n_classes):
                 train_data_for_c = self._stratify_training_data(c=cls, size=200)
                 gp = BinaryGaussianProcessClassifier(class_positive=cls)
                 gp.fit(train_data_for_c)
@@ -220,7 +220,7 @@ class MulticlassGaussianProcess(GaussianProcess):
             predictions = np.zeros((num_samples, n_classes))
             for cls, gp in self.binary_gps:
                 predictions[:, cls] = gp.predict(new_data, return_probs=True)
-            prediction_classes = np.argmax(np.vstack((predictions[:, cls], 1-predictions[:, cls])).T, axis=1)
+            prediction_classes = np.argmax(predictions, axis=1)
         else:
             raise ValueError
 

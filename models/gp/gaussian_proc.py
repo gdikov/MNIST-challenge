@@ -43,9 +43,9 @@ class GaussianProcess(AbstractModel):
             d = np.sin(0.5 * (x_i - x_j))
             return np.exp(-2.0 * np.dot(d.T, d) / (self.hyper_params['lambda'][cls]) ** 2)
 
-        if kernel == 'sqr_exp':
-            self.hyper_params = {'sigma': np.random.uniform(1.0, 1.1, size=n_classes if self.n_classes > 2 else 1),
-                                 'lambda': np.random.uniform(16.3, 16.4, size=n_classes if self.n_classes > 2 else 1)}
+        if kernel == 'sqr_exp': # best for multi: 1 - 1,1 / 16,3, 16.4
+            self.hyper_params = {'sigma': np.random.uniform(2.0, 2.1, size=n_classes if self.n_classes > 2 else 1),
+                                 'lambda': np.random.uniform(10.3, 10.4, size=n_classes if self.n_classes > 2 else 1)}
             return squared_exponential
         elif kernel == 'lin':
             self.hyper_params = {'sigma': np.random.uniform(0.7, 1.3, size=n_classes if self.n_classes > 2 else 1)}
@@ -127,6 +127,12 @@ class GaussianProcess(AbstractModel):
         else:
             self.mean_function = mean_init
 
+
+    def update_hypers_and_functions(self, new_hypers):
+        self.hyper_params = new_hypers
+        self.cov_function = self.build_cov_function(self.data['x_train'], mode='symm')
+
+
     def fit(self, train_data, **kwargs):
         pass
 
@@ -150,10 +156,11 @@ class MulticlassGaussianProcess(GaussianProcess):
         size_of_class_c = size // 2
         subset_ids_of_class_c = np.random.choice(ids_of_class_c, size=size_of_class_c, replace=False)
         subset_ids_rest = np.random.choice(ids_the_rest, size=size - size_of_class_c, replace=False)
+        shuffled_order = np.random.permutation(subset_ids_of_class_c.shape[0] + subset_ids_rest.shape[0])
         data_dict = {'x_train': np.vstack((self.data['x_train'][subset_ids_of_class_c],
-                                           self.data['x_train'][subset_ids_rest])),
+                                           self.data['x_train'][subset_ids_rest]))[shuffled_order],
                      'y_train': np.hstack((self.data['y_train'][subset_ids_of_class_c],
-                                           self.data['y_train'][subset_ids_rest]))}
+                                           self.data['y_train'][subset_ids_rest]))[shuffled_order]}
         return data_dict
 
 
@@ -184,8 +191,8 @@ class MulticlassGaussianProcess(GaussianProcess):
             self.latent_function = f_posterior
         elif self.classification_mode == 'mixed_binary':
             self.binary_gps = list()
-            for cls in xrange(n_classes):
-                train_data_for_c = self._stratify_training_data(c=cls, size=100)
+            for cls in range(1, 2):
+                train_data_for_c = self._stratify_training_data(c=cls, size=200)
                 gp = BinaryGaussianProcessClassifier()
                 gp.fit(train_data_for_c)
                 self.binary_gps.append((cls, gp))
@@ -201,20 +208,19 @@ class MulticlassGaussianProcess(GaussianProcess):
             num_samples = new_data.shape[0]
 
         if self.classification_mode == 'multi':
-            # extend the covariance function
             cov_function_test = {'auto': self.build_cov_function(new_data, mode='auto'),
                                  'hetero': self.build_cov_function(new_data, mode='hetero')}
             latent_mean, latent_cov = self.estimator.compute_latent_mean_cov_multiclass(cov_matrix_train=self.cov_function,
                                                                                         cov_matrix_test=cov_function_test,
                                                                                         f_posterior=self.latent_function)
-
             predicted_class_probs = self.sampler.sample(latent_mean=latent_mean, latent_cov=latent_cov)
             return np.argmax(predicted_class_probs, axis=1)
+
         elif self.classification_mode == 'mixed_binary':
             predictions = np.zeros((num_samples, n_classes))
             for cls, gp in self.binary_gps:
                 predictions[:, cls] = gp.predict(new_data, return_probs=True)
-            prediction_classes = np.argmax(predictions, axis=1)
+            prediction_classes = np.argmax(np.vstack((predictions[:, cls], 1-predictions[:, cls])).T, axis=1)
         else:
             raise ValueError
 
@@ -238,12 +244,16 @@ class BinaryGaussianProcessClassifier(GaussianProcess):
         self.num_samples = self.data['x_train'].shape[0]
 
         self.set_gp_functions()
-        f_posterior, approx_log_marg_likelihood = \
-            self.estimator.approximate_binary(self.cov_function, self.data['y_train'],
-                                              latent_init=self.latent_function, cls=self.class_positive)
-        # better_hypers = self.optimiser.optimise_hyper_params_binary(f_posterior)
-        # cov_posterior, mean_posterior = self._recompute_mean_cov(better_hypers)
-        # self._set_gp_functions(latent_init=f_posterior, cov_init=cov_posterior, mean_init=mean_posterior)
+        for i in range(1):
+            f_posterior, a, approx_log_marg_likelihood = \
+                self.estimator.approximate_binary(self.cov_function, self.data['y_train'],
+                                                  latent_init=self.latent_function, cls=self.class_positive)
+            # better_hypers = self.optimiser.optimise_hyper_params_binary(self.cov_function,
+            #                                                             f_posterior,
+            #                                                             a, self.data['y_train'],
+            #                                                             self.hyper_params, self.class_positive)
+            # self.hyper_params = better_hypers
+            # self.set_gp_functions(latent_init=f_posterior)  # it also recomputes the new covariance
         self.latent_function = f_posterior
 
 
@@ -271,12 +281,13 @@ if __name__ == "__main__":
 
     data_train, data_test = load_MNIST(num_training=10000, num_validation=100)
 
-    model = MulticlassGaussianProcess()
+    model = MulticlassGaussianProcess(classification_mode='mixed_binary')
 
     model.fit(data_train)
 
-    predictions = model.predict(data_train['x_train'][:100])
-
-    test_acc = np.sum(predictions == data_train['y_train'][:100]) / float(predictions.shape[0]) * 100.
+    predictions = model.predict(data_train['x_val'])
+    print(predictions)
+    print(data_train['y_val'])
+    test_acc = np.sum(predictions == data_train['y_val']) / float(predictions.shape[0]) * 100.
     print("Validation accuracy: {0}"
           .format(test_acc))

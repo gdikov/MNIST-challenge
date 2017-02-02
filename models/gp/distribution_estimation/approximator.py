@@ -41,15 +41,15 @@ class LaplaceApproximation(object):
             # b = W * f + delta log p(y|f)
             b = spm.diags(neg_hessian, format='csc').dot(f) + self.binary_targets - pi
             # a = b - W^(1/2) * L^T \ (L \ (W^(1/2) * K * b))
-            a = b - (neg_hessian_sqrt.dot(spsl.spsolve(spm.csc_matrix(L.T),
-                                                       spsl.spsolve(spm.csc_matrix(L),
-                                                                    neg_hessian_sqrt.dot(cov_matrix.dot(b))))))
+            a = b - neg_hessian_sqrt.dot(spsl.spsolve(spm.csc_matrix(L.T),
+                                                      spsl.spsolve(spm.csc_matrix(L),
+                                                                   neg_hessian_sqrt.dot(cov_matrix.dot(b)))))
             # f = K * a
             f = cov_matrix.dot(a)
 
-        approx_log_marg_likelihood = -0.5 * a.dot(f) + np.log(logistic(f)) - np.sum(np.log(np.diagonal(L)))
+        approx_log_marg_likelihood = -0.5 * a.dot(f) + np.sum(np.log(logistic(f))) - np.sum(np.log(np.diagonal(L)))
 
-        return f, approx_log_marg_likelihood
+        return f, a, approx_log_marg_likelihood
 
 
     def compute_latent_mean_cov_binary(self, cov_matrix_train, cov_matrix_test, f_posterior):
@@ -65,7 +65,7 @@ class LaplaceApproximation(object):
         # mean_f* = k(x_*)^T * delta log p(y|f_hat)
         latent_means = cov_matrix_test['hetero'].dot(self.binary_targets - pi)
         # v = L \ (W^(1/2) * k(x_*))
-        v = spsl.spsolve(spm.csc_matrix(L), neg_hessian_sqrt.dot(cov_matrix_test['hetero']))
+        v = spsl.spsolve(spm.csc_matrix(L), neg_hessian_sqrt.dot(cov_matrix_test['hetero'].T)).T
         # V[f*] = k(x_*, x_*) - v^T * v
         latent_covs = cov_matrix_test['auto'] - np.einsum('ij,ij->i', v, v)
 
@@ -76,9 +76,12 @@ class LaplaceApproximation(object):
         def approximate_integral_one_variable(_mean, _cov):
             _cov = np.abs(_cov)     # safety measure, it shouldn't happen but it happens...there is probably a bug
             const = 1.0 / (np.sqrt(2 * np.pi * _cov))
-            neg_half_cov = -0.5 * _cov
+            neg_half_cov = -0.5 / _cov
             fun = lambda x: np.exp(neg_half_cov * (x - _mean)**2) / (1.0 + np.exp(-x))
             pi_star = const * spi.quad(fun, -10, 10)[0]
+            if pi_star > 1 or pi_star < 0:
+                print("ERRR")
+                raise ValueError
             return pi_star
 
         pi_star_all = np.array([approximate_integral_one_variable(m, c) for m, c in zip(latent_mean, latent_cov)])
@@ -144,6 +147,7 @@ class LaplaceApproximation(object):
 
         return f, approx_log_marg_likelihood
 
+
     def _is_converged(self, f):
         if self.iter_counter < self.max_iter:
             print("\t\t\tIteration {}: ||f|| = {}".format(self.iter_counter + 1, spl.norm(f)))
@@ -156,6 +160,7 @@ class LaplaceApproximation(object):
             return False
         print("\t\tNewton iterations are not converging and max iteration count has been attained")
         return True
+
 
     def compute_latent_mean_cov_multiclass(self, cov_matrix_train, cov_matrix_test, f_posterior):
         print("\t\tComputing latent mean and covariance")

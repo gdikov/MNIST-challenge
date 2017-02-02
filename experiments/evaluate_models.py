@@ -14,7 +14,7 @@ path_to_models = os.path.join(os.path.realpath(os.path.dirname(__file__)), '../m
 path_to_results = os.path.join(os.path.realpath(os.path.dirname(__file__)), '../report')
 
 
-def test_knn(train_from_scratch=False, verbose=True):
+def evaluate_knn(train_from_scratch=False, verbose=True):
     """
     Test the kNN classifier on the whole test set using the whole training and validation set
     :return: mean test accuracy (i.e. percentage of the correctly classified samples)
@@ -28,7 +28,7 @@ def test_knn(train_from_scratch=False, verbose=True):
         best_k = np.load(path_to_optimal)
         print("\tLoading pre-computed optimal parameter k={}".format(best_k))
     else:
-        validator = KFoldCrossValidation(data=data_train, k=3)
+        validator = KFoldCrossValidation(data=data_train, k=5)
         best_k = validator.validate(model=model, ranges=xrange(1, 10), verbose=verbose)
         np.save(path_to_optimal, best_k)
 
@@ -44,7 +44,7 @@ def test_knn(train_from_scratch=False, verbose=True):
     return test_acc
 
 
-def test_logreg(train_from_scratch=False, verbose=True):
+def evaluate_logreg(train_from_scratch=False, verbose=True):
     """
     Test the Logistic Regression classifier on the whole testing set using the a subsets for  training and validation.
     :return: mean test accuracy (i.e. percentage of the correctly classified samples)
@@ -54,7 +54,7 @@ def test_logreg(train_from_scratch=False, verbose=True):
     model = LogisticRegression(batch_size=10000, add_bias=True)
 
     if train_from_scratch or not os.path.exists(os.path.join(path_to_models, 'logreg/optimal_W.npy')):
-        validator = KFoldCrossValidation(data=data_train, k=3)
+        validator = KFoldCrossValidation(data=data_train, k=5)
         regularisation_range = [0., 1e-5, 1e-4, 1e-3, 1e-2]
         best_reg = validator.validate(model=model, ranges=regularisation_range, verbose=verbose)
         model.fit(data_train, num_epochs=100, reg=best_reg, reinit=True, verbose=True, save_best=True)
@@ -73,7 +73,7 @@ def test_logreg(train_from_scratch=False, verbose=True):
     return test_acc
 
 
-def test_convnet(train_from_scratch=True, verbose=True):
+def evaluate_convnet(train_from_scratch=True, verbose=True):
     """
     Test the Convolutional Neural Network classifier on the whole testing set
     using the a subsets for training and validation.

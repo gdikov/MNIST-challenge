@@ -30,7 +30,7 @@ class kNearestNeighbours(AbstractModel):
         @:return: the predicted labels for the unseen data samples
         :param **kwargs:
         """
-
+        k = kwargs.get('k', 1)
         # make sure the new_data is shaped like the train data
         if new_data.shape[1] != self.data['x_train'].shape[1]:
             new_data = new_data.reshape(new_data.shape[0], self.data['x_train'].shape[1])

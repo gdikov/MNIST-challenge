@@ -17,7 +17,7 @@ class KFoldCrossValidation(CrossValidation):
         self.k = k
 
     def validate(self, model, ranges, verbose=True):
-        print("\tPerforming k-fold cross-validation with {} folds".format(self.k))
+        print("\tPerforming {}-fold cross-validation".format(self.k))
         if model.name == 'kNN':
             if isinstance(ranges, xrange):
                 param_range = ranges

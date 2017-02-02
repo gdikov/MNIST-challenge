@@ -44,8 +44,8 @@ class GaussianProcess(AbstractModel):
             return np.exp(-2.0 * np.dot(d.T, d) / (self.hyper_params['lambda'][cls]) ** 2)
 
         if kernel == 'sqr_exp': # best for multi: 1 - 1,1 / 16,3, 16.4
-            self.hyper_params = {'sigma': np.random.uniform(2.0, 2.1, size=n_classes if self.n_classes > 2 else 1),
-                                 'lambda': np.random.uniform(10.3, 10.4, size=n_classes if self.n_classes > 2 else 1)}
+            self.hyper_params = {'sigma': np.random.uniform(1.0, 1.1, size=n_classes if self.n_classes > 2 else 1),
+                                 'lambda': np.random.uniform(3.3, 3.4, size=n_classes if self.n_classes > 2 else 1)}
             return squared_exponential
         elif kernel == 'lin':
             self.hyper_params = {'sigma': np.random.uniform(0.7, 1.3, size=n_classes if self.n_classes > 2 else 1)}
@@ -192,7 +192,7 @@ class MulticlassGaussianProcess(GaussianProcess):
         elif self.classification_mode == 'mixed_binary':
             self.binary_gps = list()
             for cls in range(n_classes):
-                train_data_for_c = self._stratify_training_data(c=cls, size=200)
+                train_data_for_c = self._stratify_training_data(c=cls, size=100)
                 gp = BinaryGaussianProcessClassifier(class_positive=cls)
                 gp.fit(train_data_for_c)
                 self.binary_gps.append((cls, gp))
@@ -244,16 +244,16 @@ class BinaryGaussianProcessClassifier(GaussianProcess):
         self.num_samples = self.data['x_train'].shape[0]
 
         self.set_gp_functions()
-        for i in range(1):
+        for i in range(10):
             f_posterior, a, approx_log_marg_likelihood = \
                 self.estimator.approximate_binary(self.cov_function, self.data['y_train'],
                                                   latent_init=self.latent_function, cls=self.class_positive)
-            # better_hypers = self.optimiser.optimise_hyper_params_binary(self.cov_function,
-            #                                                             f_posterior,
-            #                                                             a, self.data['y_train'],
-            #                                                             self.hyper_params, self.class_positive)
-            # self.hyper_params = better_hypers
-            # self.set_gp_functions(latent_init=f_posterior)  # it also recomputes the new covariance
+            better_hypers = self.optimiser.optimise_hyper_params_binary(self.cov_function,
+                                                                        f_posterior,
+                                                                        a, self.data['y_train'],
+                                                                        self.hyper_params, self.class_positive)
+            self.hyper_params = better_hypers
+            self.set_gp_functions(latent_init=f_posterior)  # it also recomputes the new covariance
         self.latent_function = f_posterior
 
 
@@ -285,9 +285,9 @@ if __name__ == "__main__":
 
     model.fit(data_train)
 
-    predictions = model.predict(data_train['x_val'])
+    predictions = model.predict(data_train['x_train'][:100])
     print(predictions)
     print(data_train['y_val'])
-    test_acc = np.sum(predictions == data_train['y_val']) / float(predictions.shape[0]) * 100.
+    test_acc = np.sum(predictions == data_train['y_train'][:100]) / float(predictions.shape[0]) * 100.
     print("Validation accuracy: {0}"
           .format(test_acc))

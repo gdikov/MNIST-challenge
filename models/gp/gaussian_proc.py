@@ -193,7 +193,7 @@ class MulticlassGaussianProcess(GaussianProcess):
             self.binary_gps = list()
             for cls in range(1, 2):
                 train_data_for_c = self._stratify_training_data(c=cls, size=200)
-                gp = BinaryGaussianProcessClassifier()
+                gp = BinaryGaussianProcessClassifier(class_positive=cls)
                 gp.fit(train_data_for_c)
                 self.binary_gps.append((cls, gp))
         else:
@@ -229,7 +229,7 @@ class MulticlassGaussianProcess(GaussianProcess):
 
 
 class BinaryGaussianProcessClassifier(GaussianProcess):
-    def __init__(self, kernel='sqr_exp', distribution_estimation='analytic', class_positive=0):
+    def __init__(self, class_positive, kernel='sqr_exp', distribution_estimation='analytic'):
         super(BinaryGaussianProcessClassifier, self).__init__(kernel=kernel,
                                                               distribution_estimation=distribution_estimation,
                                                               num_classes=2)

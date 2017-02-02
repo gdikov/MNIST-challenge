@@ -175,14 +175,14 @@ class LaplaceApproximation(object):
             # cholesky(I + D_c^(1/2) * K * D_c^(1/2))
             L = spl.cholesky((spm.identity(self.num_samples) +
                               spm.diags(pi_c).dot(spm.csc_matrix(cov_matrix_train[cls]).dot(spm.diags(pi_c))))
-                             .toarray())
+                             .toarray(), lower=True)
             # E_c = D_c^(1/2) * L^T \ (L \ D_c^(1/2))
             E.append((spsl.spsolve(spm.csc_matrix((L * pi_c).T),
                                    spsl.spsolve(spm.csc_matrix(L),
                                                 spm.diags(pi_c, format='csc')))).toarray())
         E = np.asarray(E)
         # M = cholesky(sum_c E_c)
-        M = spl.cholesky(np.sum(E, axis=0))
+        M = spl.cholesky(np.sum(E, axis=0), lower=True)
         latent_means = np.zeros((num_test_samples, n_classes))
         latent_covs = np.zeros((num_test_samples, n_classes, n_classes))
         for cls in xrange(n_classes):

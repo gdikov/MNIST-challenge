@@ -1,5 +1,6 @@
 import numpy as np
 import itertools as it
+import os
 
 from models.model import AbstractModel
 
@@ -147,6 +148,34 @@ class GaussianProcess(AbstractModel):
         self.cov_function = self.build_cov_function(self.data['x_train'], mode='symm')
 
 
+    def save_trainable_params(self):
+        if self.n_classes == 2:
+            path_to_params = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                          'optimal_f_' + str(self.class_positive) + '.npy')
+        else:
+            path_to_params = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'optimal_f.npy')
+        np.save(path_to_params, self.latent_function)
+
+
+    def load_trainable_params(self):
+        def load_path_binary():
+            path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                'optimal_f_' + str(self.class_positive) + '.npy')
+            return path
+
+        if self.n_classes > 2:
+            if self.classification_mode == 'multi':
+                path_to_params = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'optimal_f.npy')
+            else:
+                for gp in self.binary_gps:
+                    gp.load_trainable_params()
+                return
+        else:
+            path_to_params = load_path_binary()
+
+        self.latent_function = np.load(path_to_params)
+
+
     def fit(self, train_data, **kwargs):
         pass
 
@@ -156,11 +185,15 @@ class GaussianProcess(AbstractModel):
 
 
 class MulticlassGaussianProcess(GaussianProcess):
-    def __init__(self, kernel='sqr_exp', distribution_estimation='analytic', classification_mode='mixed_binary'):
+    def __init__(self, kernel='sqr_exp',
+                 distribution_estimation='analytic',
+                 classification_mode='mixed_binary',
+                 train_data_limit=None):
         super(MulticlassGaussianProcess, self).__init__(kernel=kernel,
                                                         distribution_estimation=distribution_estimation,
                                                         num_classes=n_classes)
         self.classification_mode = classification_mode   # can be 'multi' but it is not finished
+        self.train_data_limit = train_data_limit
 
 
     def _stratify_training_data(self, c, size=100):
@@ -189,6 +222,10 @@ class MulticlassGaussianProcess(GaussianProcess):
         """
         self.data = train_data
 
+        if self.classification_mode == 'multi':
+            self.data['x_train'] = self.data['x_train'][:self.train_data_limit]
+            self.data['y_train'] = self.data['y_train'][:self.train_data_limit]
+
         self.num_samples, dim_x, dim_y = self.data['x_train'].shape
         self.data['x_train'] = self.data['x_train'].reshape(self.num_samples, dim_x * dim_y)
 
@@ -202,13 +239,14 @@ class MulticlassGaussianProcess(GaussianProcess):
             # cov_posterior, mean_posterior = self._recompute_mean_cov(better_hypers)
             # self._set_gp_functions(latent_init=f_posterior, cov_init=cov_posterior, mean_init=mean_posterior)
             self.latent_function = f_posterior
+            # self.save_trainable_params()
         elif self.classification_mode == 'mixed_binary':
             self.binary_gps = list()
             for cls in range(n_classes):
-                train_data_for_c = self._stratify_training_data(c=cls, size=200)
+                train_data_for_c = self._stratify_training_data(c=cls, size=self.train_data_limit)
                 gp = BinaryGaussianProcessClassifier(class_positive=cls)
                 gp.fit(train_data_for_c)
-                self.binary_gps.append((cls, gp))
+                self.binary_gps.append(gp)
         else:
             raise ValueError
 
@@ -231,8 +269,8 @@ class MulticlassGaussianProcess(GaussianProcess):
 
         elif self.classification_mode == 'mixed_binary':
             predictions = np.zeros((num_samples, n_classes))
-            for cls, gp in self.binary_gps:
-                predictions[:, cls] = gp.predict(new_data, return_probs=True)
+            for gp in self.binary_gps:
+                predictions[:, gp.class_positive] = gp.predict(new_data, return_probs=True)
             prediction_classes = np.argmax(predictions, axis=1)
         else:
             raise ValueError
@@ -276,6 +314,7 @@ class BinaryGaussianProcessClassifier(GaussianProcess):
                 self.hyper_params = better_hypers
                 self.set_gp_functions(latent_init=f_posterior)  # it also recomputes the new covariance
 
+        # self.save_trainable_params()
 
 
     def predict(self, new_data, **kwargs):

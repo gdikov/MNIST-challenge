@@ -11,9 +11,14 @@ from utils.vizualiser import plot_filters
 
 
 class ConvolutionalNeuralNetwork(AbstractModel):
-    def __init__(self):
+    def __init__(self, convolution_mode='scipy'):
         super(ConvolutionalNeuralNetwork, self).__init__('ConvNet')
         self.batch_size = cfg.batch_size
+        if convolution_mode in ['scipy', 'naive']:
+            self.conv_mode = convolution_mode
+        else:
+            raise ValueError
+
         self._build_network()
         self.train_history = {'train_loss': [],
                               'val_acc': []}
@@ -26,12 +31,11 @@ class ConvolutionalNeuralNetwork(AbstractModel):
         """
         inp_layer = Input()
         filter_size = 5
-        conv_mode = 'scipy'
 
         conv1 = Conv(incoming=inp_layer,
                      conv_params={'stride': 1, 'pad': (filter_size - 1) / 2, 'filter_size': filter_size},
                      num_filters=20,
-                     conv_mode=conv_mode)
+                     conv_mode=self.conv_mode)
         relu1 = ReLU(incoming=conv1)
         pool1 = Pool(incoming=relu1,
                      pool_params={'pool_height': 2, 'pool_width': 2, 'stride': 2})
@@ -39,7 +43,7 @@ class ConvolutionalNeuralNetwork(AbstractModel):
         conv2 = Conv(incoming=pool1,
                      conv_params={'stride': 1, 'pad': (filter_size - 1) / 2, 'filter_size': filter_size},
                      num_filters=50,
-                     conv_mode=conv_mode)
+                     conv_mode=self.conv_mode)
         relu2 = ReLU(incoming=conv2)
         pool2 = Pool(incoming=relu2, pool_params={'pool_height': 2, 'pool_width': 2, 'stride': 2})
 

@@ -1,15 +1,15 @@
 import time
 
-from experiments.evaluate_models import evaluate_knn, evaluate_logreg, evaluate_convnet, test_gp
+from experiments.evaluate_models import evaluate_knn, evaluate_logreg, evaluate_convnet, evaluate_gp
 
 def measure_test_time(fn):
     start_timer = time.time()
-    result = fn(train_from_scratch=True)
+    result = fn(train_from_scratch=False)
     return (time.time() - start_timer, result)
 
 if __name__ == "__main__":
-    model_names = ("LogReg", )
-    model_testers = (evaluate_logreg,)# (evaluate_knn, evaluate_logreg, evaluate_convnet, test_gp)
+    model_names = ("GP", )
+    model_testers = (evaluate_gp,)# (evaluate_knn, evaluate_logreg, evaluate_convnet, test_gp)
 
     for name, test in zip(model_names, model_testers):
         print("Evaluating the {} classifier...".format(name))

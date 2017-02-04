@@ -17,7 +17,6 @@ class GaussianProcess(AbstractModel):
         self.hyper_params = None
         self.kernel = self.build_kernel(kernel)
         self.cov_function = None
-        self.mean_function = None
         self.latent_function = None
         if distribution_estimation == 'analytic':
             self.estimator = LaplaceApproximation()
@@ -122,7 +121,7 @@ class GaussianProcess(AbstractModel):
 
         return cov_function
 
-    def set_gp_functions(self, latent_init=None, cov_init=None, mean_init=None):
+    def set_gp_functions(self, latent_init=None, cov_init=None):
         if cov_init is None:
             self.cov_function = self.build_cov_function(self.data['x_train'], mode='symm')
         else:
@@ -134,13 +133,6 @@ class GaussianProcess(AbstractModel):
                 self.latent_function = np.zeros(self.num_samples)
         else:
             self.latent_function = latent_init
-        if mean_init is None:
-            if self.n_classes > 2:
-                self.mean_function = np.zeros((n_classes, self.num_samples))
-            else:
-                self.mean_function = np.zeros(self.num_samples)
-        else:
-            self.mean_function = mean_init
 
 
     def update_hypers_and_functions(self, new_hypers):
@@ -237,7 +229,7 @@ class MulticlassGaussianProcess(GaussianProcess):
                                                       latent_init=self.latent_function)
             # better_hypers = self.optimiser.optimise_hyper_params_multiclass(f_posterior)
             # cov_posterior, mean_posterior = self._recompute_mean_cov(better_hypers)
-            # self._set_gp_functions(latent_init=f_posterior, cov_init=cov_posterior, mean_init=mean_posterior)
+            # self._set_gp_functions(latent_init=f_posterior, cov_init=cov_posterior)
             self.latent_function = f_posterior
             # self.save_trainable_params()
         elif self.classification_mode == 'mixed_binary':
@@ -339,14 +331,14 @@ class BinaryGaussianProcessClassifier(GaussianProcess):
 if __name__ == "__main__":
     from utils.data_utils import load_MNIST
 
-    data_train, data_test = load_MNIST(num_training=10000, num_validation=100)
+    data_train, data_test = load_MNIST(num_training=2000, num_validation=0)
 
-    model = MulticlassGaussianProcess(classification_mode='mixed_binary')
+    model = MulticlassGaussianProcess(classification_mode='multi')
 
     model.fit(data_train)
 
-    predictions = model.predict(data_train['x_val'])
+    predictions = model.predict(data_test['x_test'])
 
-    test_acc = np.sum(predictions == data_train['y_val']) / float(predictions.shape[0]) * 100.
+    test_acc = np.sum(predictions == data_test['y_test']) / float(predictions.shape[0]) * 100.
     print("Validation accuracy: {0}"
           .format(test_acc))

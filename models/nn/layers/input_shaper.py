@@ -16,6 +16,9 @@ class Input(AbstractLayer):
             return (cfg.batch_size, cfg.image_channels * cfg.image_height * cfg.image_height)
 
     def forward(self, raw_data, mode='train'):
+        """
+        A forward pass for the input layer which reshapes the data into images or vectors
+        """
         # reshape into the right dimensions
         if self.shape_mode == 'img':
             return raw_data.reshape(cfg.batch_size, cfg.image_channels, cfg.image_height, cfg.image_height)

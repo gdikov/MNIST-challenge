@@ -106,14 +106,14 @@ class LogisticRegression(AbstractModel):
 
 if __name__ == "__main__":
     from utils.data_utils import load_MNIST
-    data = load_MNIST(num_training=50000, num_validation=10000)
+    data_train, data_test = load_MNIST(num_training=50000, num_validation=10000)
 
-    model = LogisticRegression(batch_size=50000, regularisation=0.0, add_bias=True)
+    model = LogisticRegression(batch_size=50000, add_bias=True)
 
-    model.fit(data, num_epochs=300)
+    model.fit(data_train, num_epochs=300, verbose=True)
 
-    predictions = model.predict(data['x_val'])
+    predictions = model.predict(data_train['x_val'])
 
-    test_acc = np.sum(predictions == data['y_val']) / float(predictions.shape[0]) * 100.
+    test_acc = np.sum(predictions == data_train['y_val']) / float(predictions.shape[0]) * 100.
     print("Validation accuracy: {0}"
           .format(test_acc))

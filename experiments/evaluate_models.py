@@ -1,9 +1,11 @@
 import os
 import numpy as np
+import time
 
 from models.knn.knn import kNearestNeighbours
 from models.logreg.logreg import LogisticRegression
 from models.nn.convnet import ConvolutionalNeuralNetwork
+from models.nn.fcnet import BasicNeuralNetwork
 from models.gp.gaussian_proc import MulticlassGaussianProcess
 
 
@@ -22,6 +24,9 @@ def evaluate_knn(train_from_scratch=False, verbose=True):
     """
     data_train, data_test = load_MNIST(num_training=60000, num_validation=0)
 
+    print("Evaluating the k-NN classifier...")
+    start_timer = time.time()
+
     model = kNearestNeighbours()
 
     path_to_optimal = os.path.join(path_to_models, 'knn/optimal_k.npy')
@@ -38,6 +43,10 @@ def evaluate_knn(train_from_scratch=False, verbose=True):
 
     test_acc = np.sum(predictions == data_test['y_test']) / float(predictions.shape[0]) * 100.
 
+    test_time = time.time() - start_timer
+    print("\tEvaluated in {} s".format(test_time))
+    print("\tTest accuracy = {0}% (Test error = {1}%)".format(test_acc, 100. - test_acc))
+
     # log the result from the test
     np.save(os.path.join(path_to_results, 'predictions_knn.npy'), predictions)
 
@@ -51,6 +60,9 @@ def evaluate_logreg(train_from_scratch=False, verbose=True):
     :return: mean test accuracy (i.e. percentage of the correctly classified samples)
     """
     data_train, data_test = load_MNIST(num_training=60000, num_validation=0)
+
+    print("Evaluating the LogReg classifier...")
+    start_timer = time.time()
 
     model = LogisticRegression(batch_size=10000, add_bias=True)
 
@@ -66,6 +78,10 @@ def evaluate_logreg(train_from_scratch=False, verbose=True):
     predictions = model.predict(data_test['x_test'])
 
     test_acc = np.sum(predictions == data_test['y_test']) / float(predictions.shape[0]) * 100.
+
+    test_time = time.time() - start_timer
+    print("\tEvaluated in {} s".format(test_time))
+    print("\tTest accuracy = {0}% (Test error = {1}%)".format(test_acc, 100. - test_acc))
 
     # log the result from the test
     np.save(os.path.join(path_to_results, 'predictions_logreg.npy'), predictions)
@@ -84,7 +100,10 @@ def evaluate_convnet(train_from_scratch=True, verbose=True):
 
     data_train, data_test = load_MNIST()
 
-    model = ConvolutionalNeuralNetwork()
+    print("Evaluating the ConvNet classifier...")
+    start_timer = time.time()
+
+    model = ConvolutionalNeuralNetwork(convolution_mode='scipy')
 
     exist_pretrained = os.path.exists(os.path.join(path_to_models, 'nn/pretrained/layer_1.npy')) and \
                        os.path.exists(os.path.join(path_to_models, 'nn/pretrained/layer_4.npy')) and \
@@ -93,7 +112,7 @@ def evaluate_convnet(train_from_scratch=True, verbose=True):
 
     if train_from_scratch or not exist_pretrained:
         answ = raw_input("\tTraining from scratch can take some days on a notebook. "
-                         "Do you want to load the pre-computed weights instead? [yes]/no")
+                         "Do you want to load the pre-computed weights instead? [yes]/no\n")
         if not answ.startswith('y'):
             model.fit(data_train, num_epochs=20)
 
@@ -102,11 +121,53 @@ def evaluate_convnet(train_from_scratch=True, verbose=True):
 
     test_acc = np.sum(predictions == data_test['y_test']) / float(predictions.shape[0]) * 100.
 
+    test_time = time.time() - start_timer
+    print("\tEvaluated in {} s".format(test_time))
+    print("\tTest accuracy = {0}% (Test error = {1}%)".format(test_acc, 100. - test_acc))
+
     # log the result from the test
     np.save(os.path.join(path_to_results, 'predictions_convnet.npy'), predictions)
 
     del data_train, data_test, model
     return test_acc
+
+
+def evaluate_basicnet(train_from_scratch=True, verbose=True):
+    """
+        Test the Convolutional Neural Network classifier on the whole testing set
+        using the subsets for training and validation.
+        :return: mean test accuracy (i.e. percentage of the correctly classified samples)
+        """
+    from utils.data_utils import load_MNIST
+
+    data_train, data_test = load_MNIST()
+
+    print("Evaluating the BasicNet classifier...")
+    start_timer = time.time()
+
+    model = BasicNeuralNetwork()
+
+    exist_pretrained = os.path.exists(os.path.join(path_to_models, 'nn/pretrained_basicnet/layer_1.npy')) and \
+                       os.path.exists(os.path.join(path_to_models, 'nn/pretrained_basicnet/layer_3.npy'))
+
+    if train_from_scratch or not exist_pretrained:
+        model.fit(data_train, num_epochs=50)
+
+    model.load_trainable_params()
+    predictions = model.predict(data_test['x_test'])
+
+    test_acc = np.sum(predictions == data_test['y_test']) / float(predictions.shape[0]) * 100.
+
+    test_time = time.time() - start_timer
+    print("\tEvaluated in {} s".format(test_time))
+    print("\tTest accuracy = {0}% (Test error = {1}%)".format(test_acc, 100. - test_acc))
+
+    # log the result from the test
+    np.save(os.path.join(path_to_results, 'predictions_basicnet.npy'), predictions)
+
+    del data_train, data_test, model
+    return test_acc
+
 
 def evaluate_gp(train_from_scratch=True, verbose=True, classification_mode='mixed_binary'):
     """
@@ -117,12 +178,14 @@ def evaluate_gp(train_from_scratch=True, verbose=True, classification_mode='mixe
     from utils.data_utils import load_MNIST
     data_train, data_test = load_MNIST(num_validation=0)
 
+    print("Evaluating the GP classifier...")
+    start_timer = time.time()
     if classification_mode == 'mixed_binary':
         model = MulticlassGaussianProcess(classification_mode='mixed_binary', train_data_limit=6000)
         exist_pretrained = all([os.path.exists(os.path.join(path_to_models, 'gp', 'optimal_f_{0}.npy'.format(i)))
                                 for i in xrange(10)])
     else:
-        model = MulticlassGaussianProcess(classification_mode='multi', train_data_limit=100)
+        model = MulticlassGaussianProcess(classification_mode='multi', train_data_limit=2000)
         exist_pretrained = os.path.exists(os.path.join(path_to_models, 'gp', 'optimal_f.npy'))
 
     if train_from_scratch or not exist_pretrained:
@@ -136,6 +199,10 @@ def evaluate_gp(train_from_scratch=True, verbose=True, classification_mode='mixe
     predictions = model.predict(data_test['x_test'])
 
     test_acc = np.sum(predictions == data_test['y_test']) / float(predictions.shape[0]) * 100.
+
+    test_time = time.time() - start_timer
+    print("\tEvaluated in {} s".format(test_time))
+    print("\tTest accuracy = {0}% (Test error = {1}%)".format(test_acc, 100. - test_acc))
 
     # log the result from the test
     np.save(os.path.join(path_to_results, 'predictions_gps.npy'), predictions)

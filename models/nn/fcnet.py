@@ -22,7 +22,7 @@ class BasicNeuralNetwork(AbstractModel):
         """
         inp_layer = Input(shape='vec')
 
-        linear1 = Linear(incoming=inp_layer, num_units=200)
+        linear1 = Linear(incoming=inp_layer, num_units=500)
         lrelu1 = ReLU(incoming=linear1)
         out_layer = Linear(incoming=lrelu1, num_units=10)
         self.layers = (inp_layer,
@@ -107,11 +107,11 @@ class BasicNeuralNetwork(AbstractModel):
                 self._compute_backward_pass(dscores)
                 losses.append(loss)
             mean_loss = np.mean(losses)
-            # if mean_loss < best_epoch_loss:
-            #     print("Saving weights on epoch: {0}".format(i))
-            #     self.save_trainable_params()
-            #     best_epoch_loss = mean_loss
-            print("Epoch: {0}, loss: {1}".format(i, mean_loss))
+            if mean_loss < best_epoch_loss:
+                print("Saving weights on epoch: {0}".format(i))
+                self.save_trainable_params()
+                best_epoch_loss = mean_loss
+            print("\tEpoch: {0}, loss: {1}".format(i, mean_loss))
 
 
     def predict(self, new_data, **kwargs):
@@ -124,7 +124,6 @@ class BasicNeuralNetwork(AbstractModel):
         for idx in self._batch_idx(num_samples, shuffle=False):
             scores = self._compute_forward_pass(new_data[idx])
             scores_all.append(scores)
-            print("{0}".format(np.mean(scores)))
         scores_all = np.concatenate(scores_all)
         return np.argmax(scores_all, axis=1)
 
@@ -132,21 +131,21 @@ class BasicNeuralNetwork(AbstractModel):
 if __name__ == "__main__":
     from utils.data_utils import load_MNIST
 
-    data = load_MNIST()
+    data_train, data_test = load_MNIST()
 
     model = BasicNeuralNetwork()
 
-    # model.load_trainable_params()
+    model.load_trainable_params()
 
-    model.fit(data, num_epochs=30)
+    # model.fit(data_train, num_epochs=50)
 
-    predictions = model.predict(data['x_val'])
+    predictions = model.predict(data_test['x_test'])
     #
-    test_acc = np.sum(predictions == data['y_val']) / float(predictions.shape[0]) * 100.
+    test_acc = np.sum(predictions == data_test['y_test']) / float(predictions.shape[0]) * 100.
     print("Validation accuracy: {0}"
           .format(test_acc))
-
-    miscalssified_idx = predictions != data['y_val']
-    from utils.vizualiser import plot_digits
-
-    plot_digits(data['x_val'][miscalssified_idx][:64], predictions[miscalssified_idx][:64], plot_shape=(8, 8))
+    #
+    # miscalssified_idx = predictions != data['y_val']
+    # from utils.vizualiser import plot_digits
+    #
+    # plot_digits(data['x_val'][miscalssified_idx][:64], predictions[miscalssified_idx][:64], plot_shape=(8, 8))

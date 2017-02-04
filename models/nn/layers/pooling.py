@@ -32,17 +32,6 @@ class Pool(AbstractLayer):
     def forward(self, X, mode='train'):
         """
         A naive implementation of the forward pass for a max pooling layer.
-
-        Inputs:
-        - x: Input data, of shape (N, C, H, W)
-        - pool_param: dictionary with the following keys:
-          - 'pool_height': The height of each pooling region
-          - 'pool_width': The width of each pooling region
-          - 'stride': The distance between adjacent pooling regions
-
-        Returns a tuple of:
-        - out: Output data
-        - cache: (x, pool_param)
         """
         pool_height = self.pool_params['pool_height']
         pool_width = self.pool_params['pool_width']
@@ -69,13 +58,6 @@ class Pool(AbstractLayer):
     def backward(self, upstream_derivatives):
         """
         A naive implementation of the backward pass for a max pooling layer.
-
-        Inputs:
-        - dout: Upstream derivatives
-        - cache: A tuple of (x, pool_param) as in the forward pass.
-
-        Returns:
-        - dx: Gradient with respect to x
         """
         x = self.cache['X']
 

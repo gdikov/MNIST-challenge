@@ -44,23 +44,8 @@ class Conv(AbstractLayer):
         A naive implementation of the forward pass for a convolutional layer.
 
         The input consists of N data points, each with C channels, height H and width
-        W. We convolve each input with F different filters, where each filter spans
+        W. Each input is convolved with F different filters, where each filter spans
         all C channels and has height HH and width WW.
-
-        Input:
-        - x: Input data of shape (N, C, H, W)
-        - w: Filter weights of shape (F, C, HH, WW)
-        - b: Biases, of shape (F,)
-        - conv_param: A dictionary with the following keys:
-          - 'stride': The number of pixels between adjacent receptive fields in the
-            horizontal and vertical directions.
-          - 'pad': The number of pixels that will be used to zero-pad the input.
-
-        Returns a tuple of:
-        - out: Output data, of shape (N, F, H', W') where H' and W' are given by
-          H' = 1 + (H + 2 * pad - HH) / stride
-          W' = 1 + (W + 2 * pad - WW) / stride
-        - cache: (x, w, b, conv_param)
         """
         N, C, H, W = X.shape
         F, _, HH, WW = self.params['W'].shape
@@ -98,15 +83,6 @@ class Conv(AbstractLayer):
     def backward(self, upstream_derivatives):
         """
         A naive implementation of the backward pass for a convolutional layer.
-
-        Inputs:
-        - upstream_derivatives: Upstream derivatives.
-        - cache: A tuple of (x, w, b, conv_param) as in conv_forward_naive
-
-        Returns a tuple of:
-        - dx: Gradient with respect to x
-        - dw: Gradient with respect to w
-        - db: Gradient with respect to b
         """
         x, w, b, padding, stride = self.cache['X'], self.params['W'], self.params['b'], \
                                    self.conv_params['pad'], self.conv_params['stride']

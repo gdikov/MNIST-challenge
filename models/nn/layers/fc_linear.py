@@ -1,6 +1,6 @@
 import numpy as np
 
-from layer import AbstractLayer
+from models.nn.layers.layer import AbstractLayer
 import models.nn.config as cfg
 
 class Linear(AbstractLayer):

@@ -6,6 +6,7 @@ from numerics.softmax import softmax
 import config as cfg
 import os
 import cPickle
+import numpy as np
 
 
 class BasicNeuralNetwork(AbstractModel):

@@ -6,8 +6,9 @@ from numerics.softmax import softmax
 import config as cfg
 import os
 import cPickle
+import numpy as np
 
-from utils.vizualiser import plot_filters
+# from utils.vizualiser import plot_filters
 
 
 class ConvolutionalNeuralNetwork(AbstractModel):
@@ -175,14 +176,10 @@ if __name__ == "__main__":
     model.load_trainable_params()
     # plot_filters(model.layers[1].params['W'], plot_shape=(2,10), channel=1)
     # model.fit(data, num_epochs=100)
-    #
-    import time
-    print("Start computing 1000")
-    start = time.time()
-    predictions = model.predict(data_test['x_test'])
-    print("Computed 1000 in {}".format(time.time() - start))
-    # #
-    test_acc = np.sum(predictions == data_test['y_test']) / float(predictions.shape[0]) * 100.
+
+    predictions = model.predict(data_train['x_val'])
+
+    test_acc = np.sum(predictions == data_train['y_val']) / float(predictions.shape[0]) * 100.
     print("Validation accuracy: {0}"
           .format(test_acc))
     #

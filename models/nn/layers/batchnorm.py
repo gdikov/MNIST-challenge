@@ -1,9 +1,7 @@
-import numpy as np
-
 
 import numpy as np
 
-from layer import AbstractLayer
+from models.nn.layers.layer import AbstractLayer
 
 
 class Batchnorm(AbstractLayer):

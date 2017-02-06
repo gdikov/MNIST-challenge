@@ -68,7 +68,7 @@ def evaluate_logreg(train_from_scratch=False, verbose=True):
 
     if train_from_scratch or not os.path.exists(os.path.join(path_to_models, 'logreg/optimal_W.npy')):
         validator = KFoldCrossValidation(data=data_train, k=5)
-        regularisation_range = [0., 1e-5, 1e-4, 1e-3, 1e-2]
+        regularisation_range = [0., 1e-10, 1e-8, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2]
         best_reg = validator.validate(model=model, ranges=regularisation_range, verbose=verbose)
         model.fit(data_train, num_epochs=100, reg=best_reg, reinit=True, verbose=True, save_best=True)
 
@@ -90,7 +90,7 @@ def evaluate_logreg(train_from_scratch=False, verbose=True):
     return test_acc
 
 
-def evaluate_convnet(train_from_scratch=True, verbose=True):
+def evaluate_convnet(train_from_scratch=True, verbose=True, continue_from_checkpoint=False):
     """
     Test the Convolutional Neural Network classifier on the whole testing set
     using the subsets for training and validation.
@@ -110,7 +110,10 @@ def evaluate_convnet(train_from_scratch=True, verbose=True):
                        os.path.exists(os.path.join(path_to_models, 'nn/pretrained/layer_7.npy')) and \
                        os.path.exists(os.path.join(path_to_models, 'nn/pretrained/layer_10.npy'))
 
-    if train_from_scratch or not exist_pretrained:
+    if continue_from_checkpoint and exist_pretrained:
+        model.load_trainable_params()
+        model.fit(data_train, num_epochs=20)
+    elif train_from_scratch or not exist_pretrained:
         answ = raw_input("\tTraining from scratch can take some days on a notebook. "
                          "Do you want to load the pre-computed weights instead? [yes]/no\n")
         if not answ.startswith('y'):

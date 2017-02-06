@@ -1,16 +1,14 @@
 
-Improvements ideas and todos:
+Improvements ideas and TODOs:
 
-    kNN: - do cross validation on validation data set but make sure
-           that all of the training (i.e. train + val) data is in the distance matrix
-
-
-    logreg: - try out different regularisation types, although I doubt that they will help much as the data is abundant
-            - try out some more preprocessing like unit variance
+    kNN:      - try out kNN after PCA
 
 
-    convnet: - find best FC network and add use it as model for the last FC layers.
-             - initialise from the pretrained and train with some dropout and/or batchnorm layers
+    logreg:   - ...
 
 
-    gaussian: - read the book and implement it. Look for tutorials too.
+    convnet:  - try out different architectures and batchnorm
+
+
+    gaussian: - fix the multi-class case.
+              - implement hyperparameter optimisation.

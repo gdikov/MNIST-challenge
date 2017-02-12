@@ -1,14 +1,15 @@
 
 Improvements ideas and TODOs:
 
-    kNN:      - try out kNN after PCA
-
-
-    logreg:   - ...
-
+    kNN:      - try out kNN after PCA with cross-validated dimension number
 
     convnet:  - try out different architectures and batchnorm
 
+    gps:      - fix the multi-class case
+              - implement hyperparameter optimisation
 
-    gaussian: - fix the multi-class case.
-              - implement hyperparameter optimisation.
+    dtrees:   - adapt the code to fit the structure defined so far
+              - test and evaluate on the MNIST dataset (and cross-validate)
+
+    others:   - add proper config.py using yaml
+              - refactor the code and implement verbose prints for all models

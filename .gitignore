@@ -1,4 +1,3 @@
 data/*
 .idea
-models/nn/layers/pretrained*
-blobs
+blobs/*

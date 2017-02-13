@@ -64,8 +64,10 @@ class kNearestNeighbours(AbstractModel):
         """
 
         if dist_mode == 'L2':
-            distances_chunk = np.sum(new_data ** 2, axis=1, keepdims=True) \
-                              + np.sum(self.data['x_train'] ** 2, axis=1) \
+            # the term `np.sum(new_data ** 2, axis=1, keepdims=True)`
+            # doesn't need to be added to the distance
+            # as it is constant w.r.t to nearest points
+            distances_chunk = np.sum(self.data['x_train'] ** 2, axis=1) \
                               - 2 * np.dot(new_data, self.data['x_train'].T)
 
             return distances_chunk

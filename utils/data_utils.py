@@ -1,17 +1,3 @@
-"""
-GENERAL NOTE:
-    These methods are adapted from the source accompanying the assignments in the online free course cs231n by A. Karpathy.
-    Link to the course: http://cs231n.stanford.edu
-    Although the content of the methods is largely changed, I decided to cite the source as I adapted the author's
-    logic and structure.
-
-    load_MNIST_from_raw(..) is taken from http://g.sweyla.com/blog/2012/mnist-numpy/
-    from the reference: https://raw.githubusercontent.com/amitgroup/amitgroup/master/amitgroup/io/mnist.py
-
-DESCRIPTION:
-    Main functionality of this module is to load and store the MNIST dataset.
-"""
-
 import cPickle as pickle
 import numpy as np
 import os
@@ -21,9 +7,7 @@ from array import array as pyarray
 
 def load_MNIST(num_training=50000, num_validation=10000, num_test=10000, force_split=False, verbose=False):
     """
-    Load the MNIST dataset from disk and perform preprocessing to prepare
-    it for classifiers. These are the same steps as we used for the SVM, but
-    condensed to a single function.
+    Load the MNIST dataset
     """
 
     # Load the raw MNIST data
@@ -96,9 +80,6 @@ def load_MNIST_from_raw(dataset="training", digits=None,
                         path=None, asbytes=False,
                         selection=None, return_labels=True,
                         return_indices=False):
-    """
-    Loads MNIST files into a 3D numpy array.
-    """
 
     # The files are assumed to have these names and should be found in 'path'
     files = {
@@ -160,7 +141,3 @@ def load_MNIST_from_raw(dataset="training", digits=None,
         return ret[0] # Don't return a tuple of one
     else:
         return ret
-
-if __name__ == "__main__":
-
-    dataset = load_MNIST()

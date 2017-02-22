@@ -3,21 +3,31 @@ import os
 
 from models.model import AbstractModel
 
-n_classes = 3
+n_classes = 10
 
 class DecisionTree(AbstractModel):
     def __init__(self):
         super(DecisionTree, self).__init__('DecisionTree')
         self.dtree = _RecursiveTree(num_classes=n_classes)
 
+
     def fit(self, train_data, **kwargs):
         depth = kwargs.get('depth', 1)
+        # reshape the images into row vectors of 28*28 elements
+        if len(train_data['x_train'].shape) == 3:
+            num_samples, dim_x, dim_y = train_data['x_train'].shape
+            train_data['x_train'] = train_data['x_train'].reshape(num_samples, dim_x * dim_y)
+        tupled_dataset = (train_data['x_train'], train_data['y_train'])
+
         # fit on the whole dataset
-        self.dtree.fit(train_data, depth=depth)
+        self.dtree.fit(tupled_dataset, depth=depth)
+
 
     def predict(self, new_data, **kwargs):
         predictions = np.zeros(new_data.shape[0])
         for i, x in enumerate(new_data):
+            if len(x.shape) == 2:
+                x = x.ravel()
             predictions[i] = self.dtree.predict(x)
         return predictions
 
@@ -134,14 +144,14 @@ class _RecursiveTree():
             self.gt.print_tree()
 
 
-def load_dataset(filename):
+def load_sample_dataset(filename):
     filepath = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
     train_data = np.genfromtxt(filepath, delimiter=', ')
     # strip the row with the labels
     train_data = train_data[1:, :]
     # decouple the labels
     labels = train_data[:, -1]
-    labels = labels.astype(np.int64)
+    labels = labels.astype(np.int32)
     # strip the labels from the features
     train_data = train_data[:, :-1]
 
@@ -150,16 +160,17 @@ def load_dataset(filename):
 
 
 if __name__ == '__main__':
-    train_data = load_dataset("sample_dataset.csv")
+    from utils.data_utils import load_MNIST
+
+    data_train, data_test = load_MNIST(num_training=500, num_validation=10)
 
     model = DecisionTree()
-    depth = 2
 
-    model.fit(train_data, depth=depth)
-    predictions = model.predict(train_data[0])
+    model.fit(data_train, depth=30)
 
-    test_acc = np.sum(predictions == train_data[1]) / float(predictions.shape[0]) * 100.
-    print("Test accuracy for depth={1}: {0}"
-          .format(test_acc, depth))
+    predictions = model.predict(data_train['x_val'])
+
+    test_acc = np.sum(predictions == data_train['y_val']) / float(predictions.shape[0]) * 100.
+    print("Validation accuracy: {0}".format(test_acc))
 
 

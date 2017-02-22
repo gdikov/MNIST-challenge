@@ -1,9 +1,9 @@
 import matplotlib
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
-def plot_digits(data, labels, plot_shape):
+def plot_digits(data, labels=None, plot_shape=None):
     # Get the figure and axes.
     num_subplots = np.prod(plot_shape)
     fig, axes = plt.subplots(*plot_shape)
@@ -15,7 +15,8 @@ def plot_digits(data, labels, plot_shape):
         axis.get_xaxis().set_visible(False)
         axis.get_yaxis().set_visible(False)
         axis.imshow(image, cmap=plt.cm.Greys_r)
-        axis.title.set_text('{}'.format(int(labels[index])))
+        if labels is not None:
+            axis.title.set_text('{}'.format(int(labels[index])))
     plt.show()
 
 def plot_filters(filters, plot_shape, channel=1):

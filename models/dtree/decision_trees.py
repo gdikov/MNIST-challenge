@@ -162,7 +162,11 @@ def load_sample_dataset(filename):
 if __name__ == '__main__':
     from utils.data_utils import load_MNIST
 
-    data_train, data_test = load_MNIST(num_training=500, num_validation=10)
+    data_train, data_test = load_MNIST(num_training=500, num_validation=100)
+
+    from utils.dim_reduction import PCA
+    dr = PCA(num_components=50)
+    data_train['x_train'] = dr.reduce(data_train['x_train'])
 
     model = DecisionTree()
 
